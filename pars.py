@@ -8,6 +8,7 @@ from urllib.parse import unquote, quote
 
 async def save_data(update, context):
     url = "https://ps.vnu.edu.ua/cgi-bin/timetable.cgi?n=700"
+    writing = ""
     group = update.message.text
     context.user_data["group"] = group
     encoded_group = quote(group, encoding='cp1251')
@@ -24,8 +25,7 @@ async def save_data(update, context):
 
     for weekday in week_days:
         date = weekday.find("h4")
-        with open(group + ".txt", "a", encoding="utf-8") as f:
-            f.write(date.text + "\n" + "\n")
+        writing += date.text + "\n" + "\n"
         schedule = weekday.find_all("tr")
         for tr in schedule:
             row = tr.text
@@ -38,7 +38,6 @@ async def save_data(update, context):
             aud = 'ауд'
             groups = ['Збірна група', 'Потік']
             spec = "Ліквідація"
-            print(row)
             for marker in markers1:
                 if marker in row:
                     row = row.replace(marker, "\n" + "👨‍🏫 " + marker, 1)
@@ -47,10 +46,9 @@ async def save_data(update, context):
             row = row.replace(spec, "\n" + spec, 1)
             for gr in groups:
                 row = row.replace(gr, "\n" + "🥷 " + gr, 1)
-
-            with open(group + ".txt", "a", encoding="utf-8") as f:
-                f.write(row + "\n")
-        with open(group + ".txt", "a", encoding="utf-8") as f:
-            f.write("➖" * 14 + "\n" + "\n")
-
+            writing += row + "\n"
+        writing += "➖" * 14 + "\n" + "\n"
+        print(writing)
+    with open(group + ".txt", "w", encoding="utf-8") as f:
+        f.write(writing)
     return 3
