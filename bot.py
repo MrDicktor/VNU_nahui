@@ -1,3 +1,4 @@
+import logging
 from typing import Dict
 from dotenv import load_dotenv
 import os
@@ -15,38 +16,41 @@ load_dotenv()
 user_ids: Dict[str, str] = {}
 
 class TelegramBotConstants:
-    TOKEN: str | None = os.getenv("TOKEN")
-    ENTER_GROUP: int = 2
-    CANCEL: int = 4
-    START: str = 'start'
+    TOKEN: str = os.getenv("TOKEN")
+    ENTER_GROUP_HANDLER_CODE: int = 2
+    CANCEL_HANDLER_COMMAND: int = 4
+    START_HANDLER_COMMAND: str = 'start'
+    MAX_MESSAGE_LENGTH: int = 4000
 
 class TelegramBot:
 
-    """загружаєм ід з файла"""
+    user_ids: list[int]
 
     @staticmethod
     def load_ids() -> None:
+        """загружаєм ід з файла"""
         user_ids.clear()
         try:
-            with open("IDS", "r", encoding="utf-8") as f:
+            with open("user_ids.txt", "r", encoding="utf-8") as f:
                 ids = f.read().split("\n")
             for user in ids:
                 if not user: continue
                 user_id, group = user.split(";")
                 user_ids[user_id] = group
-            print(user_ids)
+            logging.info(user_ids)
         except FileNotFoundError:
             pass
 
-    """старт тут, якщо ідішка записана сразу виводить розклад"""
+
     @staticmethod
     async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """старт тут, якщо ідішка записана сразу виводить розклад"""
         TelegramBot.load_ids()
         user_id: str = str(update.effective_user.id)
         print(user_id)
         if user_id not in user_ids:
             await update.message.reply_text("Введіть назву групи")
-            return TelegramBotConstants.ENTER_GROUP
+            return TelegramBotConstants.ENTER_GROUP_HANDLER_CODE
         #якщо не, то просить ввести групу і вертає команду в конв хендлер
         else:
             context.user_data["group"] = user_ids[user_id]
@@ -54,26 +58,28 @@ class TelegramBot:
             await TelegramBot.show_saved(update, context)
             return ConversationHandler.END
 
-    """коли група збережена ця функція для вивода"""
+
     @staticmethod
     async def show_saved(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """коли група збережена ця функція для вивода"""
         file_name: str = context.user_data["group"] + ".txt"
         with open(file_name, "r", encoding="utf-8") as f:
             file_content: str = f.read()
-        await update.message.reply_text(file_content[:4000])
+        await update.message.reply_text(file_content[:TelegramBotConstants.MAX_MESSAGE_LENGTH])
         return ConversationHandler.END
 
-    """коли не збережена оця"""
+
     @staticmethod
     async def show_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        """коли не збережена оця"""
         try:
             await pars.save_data(update, context)
         except GroupNotFoundException:
             await update.message.reply_text("Групу не знайдено або розкладу немає 😕\n\nСпробуйте ще раз. Введіть назву групи:")
-            return TelegramBotConstants.ENTER_GROUP
+            return TelegramBotConstants.ENTER_GROUP_HANDLER_CODE
         user_id: str = str(update.effective_user.id)
         group: str = context.user_data["group"]
-        with open("IDS", "a", encoding="utf-8") as f:
+        with open("user_ids.txt", "a", encoding="utf-8") as f:
             f.write(f"{user_id};{group}\n")
         user_ids[user_id] = group
         file_name: str = group + ".txt"
@@ -81,7 +87,7 @@ class TelegramBot:
             file_content: str = f.read()
         await update.message.reply_text(file_content[:4000])
         return ConversationHandler.END
-#вирубає все якшо команда кансел
+    #вирубає все якщо команда кенсел
     @staticmethod
     async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return ConversationHandler.END
@@ -90,16 +96,16 @@ class TelegramBot:
     def main() -> None:
 
         application: Application = Application.builder().token(TelegramBotConstants.TOKEN).build()
-#конв хандлер тут обробляється діалог
-# в майбутньому в конв хендлері будуть ше стейтс
+        #конв хандлер тут обробляється діалог
+        # в майбутньому в конв хендлері будуть ше стейтс
 
 
         conversation: ConversationHandler = ConversationHandler(
             # на команду старт він запускається і викликає старт
-            entry_points=[CommandHandler(TelegramBotConstants.START, TelegramBot.start)],
+            entry_points=[CommandHandler(TelegramBotConstants.START_HANDLER_COMMAND, TelegramBot.start)],
             states={
-# старт вертає ентер груп, ентер груп оброблює повідомлення користувача фільтрує шоб це був текст і не команда і визиває шоу дата
-               TelegramBotConstants.ENTER_GROUP: [MessageHandler(filters.TEXT & ~filters.COMMAND, TelegramBot.show_data)],
+            # старт вертає ентер груп, ентер груп оброблює повідомлення користувача фільтрує шоб це був текст і не команда і визиває шоу дата
+               TelegramBotConstants.ENTER_GROUP_HANDLER_CODE: [MessageHandler(filters.TEXT & ~filters.COMMAND, TelegramBot.show_data)],
             },
             # фолбек  це причини чо конв хедлер зупиняєтсья, і фунція туд просто якісь текст пихнути
             fallbacks=[CommandHandler("cancel", TelegramBot.cancel)],
