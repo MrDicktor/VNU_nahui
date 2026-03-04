@@ -16,7 +16,6 @@ logging.basicConfig(level=logging.INFO)
 SUBJECT_TYPE_VARIANTS = Literal["(Л)", "(Пр)", "(Зал)", "(Екз)", "(Лаб)"]
 TEACHER_STATUS = Literal["зав", "ст. викл.", "ст.викл.", "проф.", "доц.", "асист.", "зав.каф.,доц", "доц. "]
 
-#(?<=^|підгр\.\s\d\)\s|ВОК\s|^)\s*([^()]+?)\s*(?=\s\((?:Л|Пр|Зал|Екз|Лаб)\))
 
 
 # клас з константами вроді так треба
@@ -27,11 +26,13 @@ class ParserConstants:
 # мейн
 class Parser:
     def parser(lesson_number, lesson_start, lesson_end, row) ->LessonSchedule:
+        """парсер і тут формуємо LessinSchedule"""
         subject = re.search(r"^.+?(?=\s*\((?:Л|Пр|Зал|Екз|Лаб)\))", row)
         subject = subject.group(0)
         subject_type = re.search(r"\((Л|Пр|Зал|Екз|Лаб)\)", row)
         subject_type = subject_type.group()
         teacher = re.search(r"[А-ЯІЇЄҐЬ][а-яіїєґ'ь]+(?:\s+\([а-я\.]+\))?\s+[А-ЯІЇЄҐЬ]\.[А-ЯІЇЄҐЬ]\.", row)
+        #якшо якийсь кончений викладач не пройде по регулярці шоб не зламалось
         if not teacher:
             logging.info(f"{row} is not a teacher")
             teacher = "Не вказано"
@@ -39,8 +40,10 @@ class Parser:
             teacher = teacher.group()
         room = re.search(r"ауд\.\s*[А-ЯA-Z]-\d+", row)
         room = room.group()
+        sub_group = re.search(r"\(підгр\.\s?(\d+)\)", row)
+        if sub_group:
+            sub_group = sub_group.group()
         groups = re.search(r"(Збірна група|Потік).*?(?=\s*Ліквідація|$)", row)
-
         if groups:
             groups = groups.group()
         elimination = re.search(r"Ліквідація.*", row)
@@ -54,6 +57,7 @@ class Parser:
             subject=Subject(subject=subject, type=subject_type),
             teacher=teacher,
             room=room,
+            sub_group=sub_group,
             groups=groups,
             elimination=elimination
         )
@@ -61,8 +65,7 @@ class Parser:
 
 
     @staticmethod
-    def main() -> Schedule:
-        group = "ПФН-21"
+    async def main(update, group) -> WeekSchedule:
         encoded_group = quote(group, encoding='cp1251')
         data = "faculty=0&teacher=&course=0&group=" + encoded_group + "&sdate=&edate=&n=700"
         response = requests.post(ParserConstants.URL, data=data)
@@ -71,6 +74,8 @@ class Parser:
         tables = soup.find_all("div", class_="container")
         week_html = tables[1]
         week_days = week_html.find_all("div", class_="col-md-6 col-sm-6 col-xs-12 col-print-6")
+        if not week_days:
+            raise GroupNotFoundException
         week: list[DaySchedule] = []
         for weekday in week_days:
             date = weekday.find("h4").text
@@ -88,6 +93,7 @@ class Parser:
                 lesson_end = row[6:11]
                 row = row[11:]
                 lessons_in_one_time = len(re.findall(r"ауд\.\s*[А-ЯA-Z]-\d+", row))
+                #якщо дві пари в один час то це 100% або 2 підгрупи або вибіркові тому розділяємо ці пари і окремо розпрашую
                 if lessons_in_one_time > 1:
                     logging.info("далбайоб")
                     if "(підгр. 1)" in row:
@@ -112,8 +118,8 @@ class Parser:
         if len(week) <6:
             week.append(None)
 
-        week_scheme = Schedule(
-            group_name=group,
+#отут ти мабуть доїбешся але я не придумав як тут краще зробити
+        week_scheme = WeekSchedule(
             day_1=week[0],
             day_2=week[1],
             day_3=week[2],
@@ -124,7 +130,6 @@ class Parser:
 
         for i in week_scheme:
             logging.info(i)
-
 
         return week_scheme
 
