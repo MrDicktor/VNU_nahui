@@ -12,9 +12,8 @@ from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 
-# модель всі діла
-SUBJECT_TYPE_VARIANTS = Literal["(Л)", "(Пр)", "(Зал)", "(Екз)", "(Лаб)"]
-TEACHER_STATUS = Literal["зав", "ст. викл.", "ст.викл.", "проф.", "доц.", "асист.", "зав.каф.,доц", "доц. "]
+
+
 
 
 
@@ -54,7 +53,7 @@ class Parser:
             lesson_number=lesson_number,
             start_time=datetime.strptime(lesson_start, "%H:%M").time(),
             end_time=datetime.strptime(lesson_end, "%H:%M").time(),
-            subject=Subject(subject=subject, type=subject_type),
+            subject=Subject(subject=subject, subject_type=subject_type),
             teacher=teacher,
             room=room,
             sub_group=sub_group,

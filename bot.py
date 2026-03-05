@@ -1,5 +1,4 @@
 import logging
-from tokenize import Special
 from typing import Dict
 from dotenv import load_dotenv
 import os
@@ -120,7 +119,6 @@ class TelegramBot:
         else:
             schedule_schemas[group] = await Parser.main(update, group)
             week_schema = schedule_schemas[group]
-            print("тікі шо добавили")
         if text == "Сьогодні":
             today = week_schema.day_1
         elif text == "Завтра":
@@ -130,7 +128,7 @@ class TelegramBot:
         message += f"{today.date}\n\n"
         for lesson in today.schedule:
             message += f"{lesson.lesson_number}\ufe0f\u20e3 {lesson.start_time.strftime('%H:%M')}—{lesson.end_time.strftime('%H:%M')}\n"
-            message += f"📚{lesson.subject.subject}{lesson.subject.type}\n"
+            message += f"📚{lesson.subject.subject}{lesson.subject.subject_type}\n"
             message += f"👨‍🏫{lesson.teacher}\n"
             message += f"🏫{lesson.room}\n"
             if lesson.sub_group:
@@ -152,14 +150,13 @@ class TelegramBot:
         else:
             schedule_schemas[group] = await Parser.main(update, group)
             week_schema = schedule_schemas[group]
-            print("тікі шо добавили")
         days = [week_schema.day_1, week_schema.day_2, week_schema.day_3, week_schema.day_4, week_schema.day_5, week_schema.day_6]
         for today in days:
             message: str = ""
             message += f"{today.date}\n\n"
             for lesson in today.schedule:
                 message += f"{lesson.lesson_number}\ufe0f\u20e3 {lesson.start_time.strftime('%H:%M')}—{lesson.end_time.strftime('%H:%M')}\n"
-                message += f"📚{lesson.subject.subject}{lesson.subject.type}\n"
+                message += f"📚{lesson.subject.subject}{lesson.subject.subject_type}\n"
                 message += f"👨‍🏫{lesson.teacher}\n"
                 message += f"🏫{lesson.room}\n"
                 if lesson.sub_group:

@@ -3,12 +3,12 @@ from typing import Literal, Optional, List
 from datetime import time, datetime
 
 
-SUBJECT_TYPE = Literal["(Л)", "(Пр)", "(Зал)", "(Екз)", "(Лаб)"]
+subject_type = Literal["(Л)", "(Пр)", "(Зал)", "(Екз)", "(Лаб)"]
 
 
 class Subject(BaseModel):
     subject: str
-    type: SUBJECT_TYPE
+    subject_type: subject_type
 
 class LessonSchedule(BaseModel):
     lesson_number: int
