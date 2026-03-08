@@ -1,5 +1,8 @@
 import logging
 import re
+
+from telegram import Update
+
 from schemas import *
 from bs4 import BeautifulSoup
 import requests
@@ -24,12 +27,10 @@ class ParserConstants:
 
 # мейн
 class Parser:
-    def parser(lesson_number, lesson_start, lesson_end, row) ->LessonSchedule:
-        """парсер і тут формуємо LessinSchedule"""
-        subject = re.search(r"^.+?(?=\s*\((?:Л|Пр|Зал|Екз|Лаб)\))", row)
-        subject = subject.group(0)
-        subject_type = re.search(r"\((Л|Пр|Зал|Екз|Лаб)\)", row)
-        subject_type = subject_type.group()
+    def parse(self, lesson_number: int, lesson_start: time, lesson_end: time, row: str) ->LessonSchedule:
+        """парсер і тут формуємо LessonSchedule"""
+        subject = re.search(r"^.+?(?=\s*\((?:Л|Пр|Зал|Екз|Лаб)\))", row).group(0)
+        subject_type = re.search(r"\((Л|Пр|Зал|Екз|Лаб)\)", row).group()
         teacher = re.search(r"[А-ЯІЇЄҐЬ][а-яіїєґ'ь]+(?:\s+\([а-я\.]+\))?\s+[А-ЯІЇЄҐЬ]\.[А-ЯІЇЄҐЬ]\.", row)
         #якшо якийсь кончений викладач не пройде по регулярці шоб не зламалось
         if not teacher:
@@ -37,8 +38,7 @@ class Parser:
             teacher = "Не вказано"
         else:
             teacher = teacher.group()
-        room = re.search(r"ауд\.\s*[А-ЯA-Z]-\d+", row)
-        room = room.group()
+        room = re.search(r"ауд\.\s*[А-ЯA-Z]-\d+", row).group()
         sub_group = re.search(r"\(підгр\.\s?(\d+)\)", row)
         if sub_group:
             sub_group = sub_group.group()
@@ -63,8 +63,8 @@ class Parser:
         return lesson
 
 
-    @staticmethod
-    async def main(update, group) -> WeekSchedule:
+
+    async def get_lessons_data(self, update: Update,  group: str) -> WeekSchedule:
         encoded_group = quote(group, encoding='cp1251')
         data = "faculty=0&teacher=&course=0&group=" + encoded_group + "&sdate=&edate=&n=700"
         response = requests.post(ParserConstants.URL, data=data)
@@ -78,6 +78,11 @@ class Parser:
         week: list[DaySchedule] = []
         for weekday in week_days:
             date = weekday.find("h4").text
+            today_date = date[:10]
+            today_date = datetime.strptime(today_date, "%d.%m.%Y").date()
+            print(today_date)
+            week_day = date[11:]
+            print(week_day)
             schedule = weekday.find_all("tr")
             day: list[LessonSchedule] = []
 
@@ -91,26 +96,27 @@ class Parser:
                 lesson_start = row[1:6]
                 lesson_end = row[6:11]
                 row = row[11:]
-                lessons_in_one_time = len(re.findall(r"ауд\.\s*[А-ЯA-Z]-\d+", row))
+                lessons_at_one_time = len(re.findall(r"ауд\.\s*[А-ЯA-Z]-\d+", row))
                 #якщо дві пари в один час то це 100% або 2 підгрупи або вибіркові тому розділяємо ці пари і окремо розпрашую
-                if lessons_in_one_time > 1:
+                if lessons_at_one_time > 1:
                     logging.info("далбайоб")
                     if "(підгр. 1)" in row:
                         row = row.replace("(підгр. 1)", "(підгр. 1)\n", 1)
                         row = row.split("\n")
+                    #ВОК абревіатура вибіркової дисципліни і її я використовуюю як маркер щоб розділити 2 пари
                     if row.count("ВОК") > 1:
                         row = row.replace("ВОК", "\nВОК")
                         row = row.split("\n")
                         row = row[1:]
 
                     for sub_row in row:
-                        lesson = Parser.parser(lesson_number, lesson_start, lesson_end, sub_row)
+                        lesson = self.parse(lesson_number, lesson_start, lesson_end, sub_row)
                         day.append(lesson)
                 else:
-                    lesson = Parser.parser(lesson_number, lesson_start, lesson_end, row)
+                    lesson = self.parse(lesson_number, lesson_start, lesson_end, row)
                     day.append(lesson)
             day_scheme = DaySchedule(
-                date=date,
+                date=Date(today_date=today_date, week_day=week_day),
                 schedule= day
             )
             week.append(day_scheme)
@@ -118,7 +124,7 @@ class Parser:
             week.append(None)
 
 #отут ти мабуть доїбешся але я не придумав як тут краще зробити
-        week_scheme = WeekSchedule(
+        week_schema = WeekSchedule(
             day_1=week[0],
             day_2=week[1],
             day_3=week[2],
@@ -127,10 +133,10 @@ class Parser:
             day_6=week[5],
         )
 
-        for i in week_scheme:
+        for i in week_schema:
             logging.info(i)
 
-        return week_scheme
+        return week_schema
 
 if __name__ == "__main__":
-    Parser.main()
+    Parser.get_lessons_data()

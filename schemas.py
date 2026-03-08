@@ -1,10 +1,13 @@
 from pydantic import BaseModel
 from typing import Literal, Optional, List
-from datetime import time, datetime
+from datetime import time, datetime, date
 
 
 subject_type = Literal["(Л)", "(Пр)", "(Зал)", "(Екз)", "(Лаб)"]
 
+class Date(BaseModel):
+    today_date: date
+    week_day: str
 
 class Subject(BaseModel):
     subject: str
@@ -22,7 +25,7 @@ class LessonSchedule(BaseModel):
     elimination: Optional[str]
 
 class DaySchedule(BaseModel):
-    date: str
+    date: Date
     schedule: list[LessonSchedule]
 
 class WeekSchedule(BaseModel):

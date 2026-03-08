@@ -14,7 +14,7 @@ from schemas import WeekSchedule
 
 load_dotenv()
 
-"""схема така якшо новий юзер його просить ввсти групу зберігає її і зразу парсить для цієї групи, 
+"""схема така якшо новий юзер його просить ввести групу зберігає її і зразу парсить для цієї групи, 
 зберігається в дікті schedule schemas[group: WeekSchedule] і потім вже з цього дікта берем схему для вивода. Якщо користувач збередений але в дікті нема знов парсим(наприклпд  бот перезапущено то з дікта все пропадає) 
 але проблема того шо зараз його треба кожен день перезапускати шоб оновленні данні отримувати, потім вже як json буде як ти казав то наперед напарсити можна буде"""
 
@@ -69,7 +69,7 @@ class TelegramBot:
                                                one_time_keyboard=False
                                                 )
             context.user_data["group"] = user_ids[user_id]
-            await update.message.reply_text(text="bebebe", reply_markup= reply_markup)
+            await update.message.reply_text(text="Оберіть опцію", reply_markup= reply_markup)
             return ConversationHandler.END
 
     async def special_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -78,7 +78,7 @@ class TelegramBot:
         reply_markup = ReplyKeyboardMarkup(keyboard,
                                            resize_keyboard=True,
                                            one_time_keyboard=True,)
-        await update.message.reply_text(text="bebebe", reply_markup=reply_markup)
+        await update.message.reply_text(text="Оберіть опцію", reply_markup=reply_markup)
         return TelegramBotConstants.MENU_HANDLER_CODE
 
 
@@ -87,10 +87,11 @@ class TelegramBot:
         """коли користувач вводить групу тут оброблюється"""
         try:
             group = update.message.text
-            week_schedule = await Parser.main(update, group)
+            week_schedule = await Parser.get_lessons_data(update, group)
         except GroupNotFoundException:
             await update.message.reply_text("Групу не знайдено або розкладу немає 😕\n\nСпробуйте ще раз. Введіть назву групи:")
             return TelegramBotConstants.ENTER_GROUP_HANDLER_CODE
+
         user_id: str = str(update.effective_user.id)
         with open("user_ids.txt", "a", encoding="utf-8") as f:
             f.write(f"{user_id};{group}\n")
@@ -112,20 +113,25 @@ class TelegramBot:
         text: str = update.message.text
         user_id: str = str(update.effective_user.id)
         group = user_ids[user_id]
+
         #якщо все добре просто виводим
         if group in schedule_schemas.keys():
             week_schema = schedule_schemas[group]
         #якщо немає схеми то парсим і тоді вивід
         else:
-            schedule_schemas[group] = await Parser.main(update, group)
+            parser_instance = Parser()
+            schedule_schemas[group] = await parser_instance.get_lessons_data(update, group)
             week_schema = schedule_schemas[group]
+
         if text == "Сьогодні":
             today = week_schema.day_1
         elif text == "Завтра":
             today = week_schema.day_2
+
         #формування повідомлення
         message = ""
-        message += f"{today.date}\n\n"
+        date = today.date
+        message += f"{date.today_date} {date.week_day}\n\n"
         for lesson in today.schedule:
             message += f"{lesson.lesson_number}\ufe0f\u20e3 {lesson.start_time.strftime('%H:%M')}—{lesson.end_time.strftime('%H:%M')}\n"
             message += f"📚{lesson.subject.subject}{lesson.subject.subject_type}\n"
@@ -148,7 +154,8 @@ class TelegramBot:
         if group in schedule_schemas.keys():
             week_schema = schedule_schemas[group]
         else:
-            schedule_schemas[group] = await Parser.main(update, group)
+            parser_instance = Parser()
+            schedule_schemas[group] = await parser_instance.get_lessons_data(update, group)
             week_schema = schedule_schemas[group]
         days = [week_schema.day_1, week_schema.day_2, week_schema.day_3, week_schema.day_4, week_schema.day_5, week_schema.day_6]
         for today in days:
