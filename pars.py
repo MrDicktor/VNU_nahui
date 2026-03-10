@@ -1,56 +1,142 @@
-import bs4
+import logging
+import re
+
+from telegram import Update
+
+from schemas import *
 from bs4 import BeautifulSoup
 import requests
 from urllib.parse import unquote, quote
-#"cp1251"
+from exceptions import GroupNotFoundException
+from pydantic import BaseModel
+from typing import Literal, Optional, List
+from datetime import datetime
+
+
+logging.basicConfig(level=logging.INFO)
 
 
 
-async def save_data(update, context):
-    url = "https://ps.vnu.edu.ua/cgi-bin/timetable.cgi?n=700"
-    group = update.message.text
-    context.user_data["group"] = group
-    encoded_group = quote(group, encoding='cp1251')
-    data = "faculty=0&teacher=&course=0&group=" + encoded_group + "&sdate=&edate=&n=700"
-    response = requests.post(url, data= data)
-    response.encoding = 'cp1251'
-    soup = BeautifulSoup(response.text, "lxml")
-    tables = soup.find_all("div", class_="container")
-    week = tables[1]
 
-    week_days = week.find_all("div", class_="col-md-6 col-sm-6 col-xs-12 col-print-6")
-    if not week_days:
-        return 1
 
-    for weekday in week_days:
-        date = weekday.find("h4")
-        with open(group + ".txt", "a", encoding="utf-8") as f:
-            f.write(date.text + "\n" + "\n")
-        schedule = weekday.find_all("tr")
-        for tr in schedule:
-            row = tr.text
-            if len(row) < 13:
-                continue
-            num = f"{row[0]}\ufe0f\u20e3"
-            row = num + " " + row[1:6] + " — " + row[6:11] + " \n" + "📚" + row[11:] + " \n"
-            row = row.replace('\xa0', ' ')
-            markers1 = ['зав', 'ст.', 'проф.', 'доц.', 'асист']
-            aud = 'ауд'
-            groups = ['Збірна група', 'Потік']
-            spec = "Ліквідація"
-            print(row)
-            for marker in markers1:
-                if marker in row:
-                    row = row.replace(marker, "\n" + "👨‍🏫 " + marker, 1)
-                    break
-            row = row.replace(aud, "\n" + "🏫 " + aud, 1)
-            row = row.replace(spec, "\n" + spec, 1)
-            for gr in groups:
-                row = row.replace(gr, "\n" + "🥷 " + gr, 1)
 
-            with open(group + ".txt", "a", encoding="utf-8") as f:
-                f.write(row + "\n")
-        with open(group + ".txt", "a", encoding="utf-8") as f:
-            f.write("➖" * 14 + "\n" + "\n")
+# клас з константами вроді так треба
+class ParserConstants:
+    URL = "https://ps.vnu.edu.ua/cgi-bin/timetable.cgi?n=700"
 
-    return 3
+
+# мейн
+class Parser:
+    def parse(self, lesson_number: int, lesson_start: time, lesson_end: time, row: str) ->LessonSchedule:
+        """парсер і тут формуємо LessonSchedule"""
+        subject = re.search(r"^.+?(?=\s*\((?:Л|Пр|Зал|Екз|Лаб)\))", row).group(0)
+        subject_type = re.search(r"\((Л|Пр|Зал|Екз|Лаб)\)", row).group()
+        teacher = re.search(r"[А-ЯІЇЄҐЬ][а-яіїєґ'ь]+(?:\s+\([а-я\.]+\))?\s+[А-ЯІЇЄҐЬ]\.[А-ЯІЇЄҐЬ]\.", row)
+        #якшо якийсь кончений викладач не пройде по регулярці шоб не зламалось
+        if not teacher:
+            logging.info(f"{row} is not a teacher")
+            teacher = "Не вказано"
+        else:
+            teacher = teacher.group()
+        room = re.search(r"ауд\.\s*[А-ЯA-Z]-\d+", row).group()
+        sub_group = re.search(r"\(підгр\.\s?(\d+)\)", row)
+        if sub_group:
+            sub_group = sub_group.group()
+        groups = re.search(r"(Збірна група|Потік).*?(?=\s*Ліквідація|$)", row)
+        if groups:
+            groups = groups.group()
+        elimination = re.search(r"Ліквідація.*", row)
+        if elimination:
+            elimination = elimination.group()
+
+        lesson = LessonSchedule(
+            lesson_number=lesson_number,
+            start_time=datetime.strptime(lesson_start, "%H:%M").time(),
+            end_time=datetime.strptime(lesson_end, "%H:%M").time(),
+            subject=Subject(subject=subject, subject_type=subject_type),
+            teacher=teacher,
+            room=room,
+            sub_group=sub_group,
+            groups=groups,
+            elimination=elimination
+        )
+        return lesson
+
+
+
+    async def get_lessons_data(self, update: Update,  group: str) -> WeekSchedule:
+        encoded_group = quote(group, encoding='cp1251')
+        data = "faculty=0&teacher=&course=0&group=" + encoded_group + "&sdate=&edate=&n=700"
+        response = requests.post(ParserConstants.URL, data=data)
+        response.encoding = 'cp1251'
+        soup = BeautifulSoup(response.text, "lxml")
+        tables = soup.find_all("div", class_="container")
+        week_html = tables[1]
+        week_days = week_html.find_all("div", class_="col-md-6 col-sm-6 col-xs-12 col-print-6")
+        if not week_days:
+            raise GroupNotFoundException
+        week: list[DaySchedule] = []
+
+        for weekday in week_days:
+            date = weekday.find("h4").text
+            today_date = date[:10]
+            today_date = datetime.strptime(today_date, "%d.%m.%Y").date()
+            week_day = date[11:]
+            schedule = weekday.find_all("tr")
+            day: list[LessonSchedule] = []
+
+            for tr in schedule:
+                row = tr.text
+                row = row.replace('\xa0', ' ')
+                #щоб скіпнути рядок в якому немає пари або практика
+                if len(row) < 25:
+                    continue
+                lesson_number = int(row[0])
+                lesson_start = row[1:6]
+                lesson_end = row[6:11]
+                row = row[11:]
+                lessons_at_one_time = len(re.findall(r"ауд\.\s*[А-ЯA-Z]-\d+", row))
+                #якщо дві пари в один час то це 100% або 2 підгрупи або вибіркові тому розділяємо ці пари і окремо розпрашую
+                if lessons_at_one_time > 1:
+                    logging.info("далбайоб")
+                    if "(підгр. 1)" in row:
+                        row = row.replace("(підгр. 1)", "(підгр. 1)\n", 1)
+                        row = row.split("\n")
+                    #ВОК абревіатура вибіркової дисципліни і її я використовуюю як маркер щоб розділити 2 пари
+                    if row.count("ВОК") > 1:
+                        row = row.replace("ВОК", "\nВОК")
+                        row = row.split("\n")
+                        row = row[1:]
+
+                    for sub_row in row:
+                        lesson = self.parse(lesson_number, lesson_start, lesson_end, sub_row)
+                        day.append(lesson)
+                else:
+                    lesson = self.parse(lesson_number, lesson_start, lesson_end, row)
+                    day.append(lesson)
+            day_scheme = DaySchedule(
+                today_date=today_date,
+                week_day=week_day,
+                schedule= day
+            )
+            week.append(day_scheme)
+        if len(week) <6:
+            week.append(None)
+
+#отут ти мабуть доїбешся але я не придумав як тут краще зробити
+        week_schema = WeekSchedule(
+            day_1=week[0],
+            day_2=week[1],
+            day_3=week[2],
+            day_4=week[3],
+            day_5=week[4],
+            day_6=week[5],
+        )
+
+        for i in week_schema:
+            logging.debug(i)
+
+        return week_schema
+
+if __name__ == "__main__":
+    Parser.get_lessons_data()
