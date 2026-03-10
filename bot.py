@@ -87,7 +87,12 @@ class TelegramBot:
         """коли користувач вводить групу тут оброблюється"""
         try:
             group = update.message.text
-            week_schedule = await Parser.get_lessons_data(update, group)
+            if group in schedule_schemas.keys():
+                week_schedule = schedule_schemas[group]
+            else:
+                parser_instance = Parser()
+                week_schedule = await parser_instance.get_lessons_data(update, group)
+                schedule_schemas[group] = week_schedule
         except GroupNotFoundException:
             await update.message.reply_text("Групу не знайдено або розкладу немає 😕\n\nСпробуйте ще раз. Введіть назву групи:")
             return TelegramBotConstants.ENTER_GROUP_HANDLER_CODE
@@ -96,7 +101,7 @@ class TelegramBot:
         with open("user_ids.txt", "a", encoding="utf-8") as f:
             f.write(f"{user_id};{group}\n")
         user_ids[user_id] = group
-        schedule_schemas[group] = week_schedule
+
         await update.message.reply_text("Групу збережено")
         return ConversationHandler.END
 
@@ -130,8 +135,7 @@ class TelegramBot:
 
         #формування повідомлення
         message = ""
-        date = today.date
-        message += f"{date.today_date} {date.week_day}\n\n"
+        message += f"{today.today_date} {today.week_day}\n\n"
         for lesson in today.schedule:
             message += f"{lesson.lesson_number}\ufe0f\u20e3 {lesson.start_time.strftime('%H:%M')}—{lesson.end_time.strftime('%H:%M')}\n"
             message += f"📚{lesson.subject.subject}{lesson.subject.subject_type}\n"
@@ -160,7 +164,7 @@ class TelegramBot:
         days = [week_schema.day_1, week_schema.day_2, week_schema.day_3, week_schema.day_4, week_schema.day_5, week_schema.day_6]
         for today in days:
             message: str = ""
-            message += f"{today.date}\n\n"
+            message += f"{today.today_date} {today.week_day}\n\n"
             for lesson in today.schedule:
                 message += f"{lesson.lesson_number}\ufe0f\u20e3 {lesson.start_time.strftime('%H:%M')}—{lesson.end_time.strftime('%H:%M')}\n"
                 message += f"📚{lesson.subject.subject}{lesson.subject.subject_type}\n"

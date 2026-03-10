@@ -76,13 +76,12 @@ class Parser:
         if not week_days:
             raise GroupNotFoundException
         week: list[DaySchedule] = []
+
         for weekday in week_days:
             date = weekday.find("h4").text
             today_date = date[:10]
             today_date = datetime.strptime(today_date, "%d.%m.%Y").date()
-            print(today_date)
             week_day = date[11:]
-            print(week_day)
             schedule = weekday.find_all("tr")
             day: list[LessonSchedule] = []
 
@@ -116,7 +115,8 @@ class Parser:
                     lesson = self.parse(lesson_number, lesson_start, lesson_end, row)
                     day.append(lesson)
             day_scheme = DaySchedule(
-                date=Date(today_date=today_date, week_day=week_day),
+                today_date=today_date,
+                week_day=week_day,
                 schedule= day
             )
             week.append(day_scheme)
@@ -134,7 +134,7 @@ class Parser:
         )
 
         for i in week_schema:
-            logging.info(i)
+            logging.debug(i)
 
         return week_schema
 
