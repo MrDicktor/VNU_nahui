@@ -1,19 +1,15 @@
 import logging
 import re
-
 from telegram import Update
-
 from schemas import *
 from bs4 import BeautifulSoup
 import requests
 from urllib.parse import unquote, quote
 from exceptions import GroupNotFoundException
-from pydantic import BaseModel
-from typing import Literal, Optional, List
 from datetime import datetime
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 
 
@@ -64,7 +60,7 @@ class Parser:
 
 
 
-    async def get_lessons_data(self, update: Update,  group: str) -> WeekSchedule:
+    def get_lessons_data(self,  group: str) -> WeekSchedule:
         encoded_group = quote(group, encoding='cp1251')
         data = "faculty=0&teacher=&course=0&group=" + encoded_group + "&sdate=&edate=&n=700"
         response = requests.post(ParserConstants.URL, data=data)
@@ -101,14 +97,18 @@ class Parser:
                     logging.info("далбайоб")
                     if "(підгр. 1)" in row:
                         row = row.replace("(підгр. 1)", "(підгр. 1)\n", 1)
-                        row = row.split("\n")
                     #ВОК абревіатура вибіркової дисципліни і її я використовуюю як маркер щоб розділити 2 пари
                     if row.count("ВОК") > 1:
                         row = row.replace("ВОК", "\nВОК")
-                        row = row.split("\n")
-                        row = row[1:]
+                    if "БЗВП." in row:
+                        row = row.replace("БЗВП.","\nБЗВП.")
+                    if lessons_at_one_time >= 4:
+                        row = row.replace("ОНПВ", "\nОНПВ")
 
+                    row = row.split("\n")
                     for sub_row in row:
+                        if sub_row == "":
+                            continue
                         lesson = self.parse(lesson_number, lesson_start, lesson_end, sub_row)
                         day.append(lesson)
                 else:
