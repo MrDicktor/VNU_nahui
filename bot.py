@@ -2,17 +2,19 @@ import logging
 from typing import Dict
 from dotenv import load_dotenv
 import os
-
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ConversationHandler, CallbackQueryHandler, \
     filters, ContextTypes, Updater
-
-import pars
 from exceptions import GroupNotFoundException
 from pars import Parser
 from schemas import WeekSchedule
 
 load_dotenv()
+logging.basicConfig(level=logging.DEBUG)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("telegram").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
 
 """схема така якшо новий юзер його просить ввести групу зберігає її і зразу парсить для цієї групи, 
 зберігається в дікті schedule schemas[group: WeekSchedule] і потім вже з цього дікта берем схему для вивода. Якщо користувач збередений але в дікті нема знов парсим(наприклпд  бот перезапущено то з дікта все пропадає) 
@@ -91,7 +93,7 @@ class TelegramBot:
                 week_schedule = schedule_schemas[group]
             else:
                 parser_instance = Parser()
-                week_schedule = await parser_instance.get_lessons_data(update, group)
+                week_schedule = parser_instance.get_lessons_data(group)
                 schedule_schemas[group] = week_schedule
         except GroupNotFoundException:
             await update.message.reply_text("Групу не знайдено або розкладу немає 😕\n\nСпробуйте ще раз. Введіть назву групи:")
@@ -125,7 +127,7 @@ class TelegramBot:
         #якщо немає схеми то парсим і тоді вивід
         else:
             parser_instance = Parser()
-            schedule_schemas[group] = await parser_instance.get_lessons_data(update, group)
+            schedule_schemas[group] = parser_instance.get_lessons_data(group)
             week_schema = schedule_schemas[group]
 
         if text == "Сьогодні":
@@ -159,7 +161,7 @@ class TelegramBot:
             week_schema = schedule_schemas[group]
         else:
             parser_instance = Parser()
-            schedule_schemas[group] = await parser_instance.get_lessons_data(update, group)
+            schedule_schemas[group] =  parser_instance.get_lessons_data(group)
             week_schema = schedule_schemas[group]
         days = [week_schema.day_1, week_schema.day_2, week_schema.day_3, week_schema.day_4, week_schema.day_5, week_schema.day_6]
         for today in days:
