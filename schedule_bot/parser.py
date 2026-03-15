@@ -1,15 +1,10 @@
 import logging
 import re
-
-from telegram import Update
-
-from schemas import *
+from .schemas import *
 from bs4 import BeautifulSoup
 import requests
-from urllib.parse import unquote, quote
-from exceptions import GroupNotFoundException
-from pydantic import BaseModel
-from typing import Literal, Optional, List
+from urllib.parse import quote
+from schedule_bot.exceptions import GroupNotFoundException
 from datetime import datetime
 
 
@@ -64,7 +59,7 @@ class Parser:
 
 
 
-    async def get_lessons_data(self, update: Update,  group: str) -> WeekSchedule:
+    def get_lessons_data(self, group: str) -> WeekSchedule:
         encoded_group = quote(group, encoding='cp1251')
         data = "faculty=0&teacher=&course=0&group=" + encoded_group + "&sdate=&edate=&n=700"
         response = requests.post(ParserConstants.URL, data=data)
