@@ -1,6 +1,6 @@
 import logging
 import re
-from .schemas import *
+from schedule_bot.schemas import *
 from bs4 import BeautifulSoup
 import requests
 from urllib.parse import quote
@@ -9,11 +9,6 @@ from datetime import datetime
 
 
 logging.basicConfig(level=logging.INFO)
-
-
-
-
-
 
 # клас з константами вроді так треба
 class ParserConstants:

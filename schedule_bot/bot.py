@@ -7,7 +7,7 @@ from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ConversationHandler, CallbackQueryHandler, \
     filters, ContextTypes, Updater
 
-import parser
+import schedule_bot.parser
 from exceptions import GroupNotFoundException
 from parser import Parser
 from schemas import WeekSchedule
