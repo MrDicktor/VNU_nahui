@@ -10,6 +10,11 @@ from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 
+
+
+
+
+
 # клас з константами вроді так треба
 class ParserConstants:
     URL = "https://ps.vnu.edu.ua/cgi-bin/timetable.cgi?n=700"
@@ -21,7 +26,7 @@ class Parser:
         """парсер і тут формуємо LessonSchedule"""
         subject = re.search(r"^.+?(?=\s*\((?:Л|Пр|Зал|Екз|Лаб)\))", row).group(0)
         subject_type = re.search(r"\((Л|Пр|Зал|Екз|Лаб)\)", row).group()
-        teacher = re.search(r"[А-ЯІЇЄҐЬ][а-яіїєґ'ь]+(?:\s+\([а-я\.]+\))?\s+[А-ЯІЇЄҐЬ]\.[А-ЯІЇЄҐЬ]\.", row)
+        teacher = re.search(r"(?<=\)\s)([А-ЩЬЮЯҐЄІЇа-щьюяґєії'].+?)(?=\sауд\.)", row)
         #якшо якийсь кончений викладач не пройде по регулярці шоб не зламалось
         if not teacher:
             logging.info(f"{row} is not a teacher")
@@ -128,5 +133,3 @@ class Parser:
 
         return week_schema
 
-if __name__ == "__main__":
-    Parser.get_lessons_data()
