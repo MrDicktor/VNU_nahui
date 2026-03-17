@@ -7,9 +7,9 @@ from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ConversationHandler, CallbackQueryHandler, \
     filters, ContextTypes, Updater
 
-import pars
+import schedule_bot.parser
 from exceptions import GroupNotFoundException
-from pars import Parser
+from parser import Parser
 from schemas import WeekSchedule
 
 load_dotenv()
@@ -38,7 +38,7 @@ class TelegramBot:
         """загружаєм ід з файла"""
         user_ids.clear()
         try:
-            with open("user_ids.txt", "r", encoding="utf-8") as f:
+            with open("../user_ids.txt", "r", encoding="utf-8") as f:
                 ids = f.read().split("\n")
             for user in ids:
                 if not user: continue
@@ -91,14 +91,14 @@ class TelegramBot:
                 week_schedule = schedule_schemas[group]
             else:
                 parser_instance = Parser()
-                week_schedule = await parser_instance.get_lessons_data(update, group)
+                week_schedule = parser_instance.get_lessons_data(group)
                 schedule_schemas[group] = week_schedule
         except GroupNotFoundException:
             await update.message.reply_text("Групу не знайдено або розкладу немає 😕\n\nСпробуйте ще раз. Введіть назву групи:")
             return TelegramBotConstants.ENTER_GROUP_HANDLER_CODE
 
         user_id: str = str(update.effective_user.id)
-        with open("user_ids.txt", "a", encoding="utf-8") as f:
+        with open("../user_ids.txt", "a", encoding="utf-8") as f:
             f.write(f"{user_id};{group}\n")
         user_ids[user_id] = group
 
@@ -125,7 +125,7 @@ class TelegramBot:
         #якщо немає схеми то парсим і тоді вивід
         else:
             parser_instance = Parser()
-            schedule_schemas[group] = await parser_instance.get_lessons_data(update, group)
+            schedule_schemas[group] =  parser_instance.get_lessons_data(group)
             week_schema = schedule_schemas[group]
 
         if text == "Сьогодні":
@@ -159,7 +159,7 @@ class TelegramBot:
             week_schema = schedule_schemas[group]
         else:
             parser_instance = Parser()
-            schedule_schemas[group] = await parser_instance.get_lessons_data(update, group)
+            schedule_schemas[group] = parser_instance.get_lessons_data(group)
             week_schema = schedule_schemas[group]
         days = [week_schema.day_1, week_schema.day_2, week_schema.day_3, week_schema.day_4, week_schema.day_5, week_schema.day_6]
         for today in days:

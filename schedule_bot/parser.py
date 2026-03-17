@@ -1,15 +1,10 @@
 import logging
 import re
-
-from telegram import Update
-
-from schemas import *
+from schedule_bot.schemas import *
 from bs4 import BeautifulSoup
 import requests
-from urllib.parse import unquote, quote
-from exceptions import GroupNotFoundException
-from pydantic import BaseModel
-from typing import Literal, Optional, List
+from urllib.parse import quote
+from schedule_bot.exceptions import GroupNotFoundException
 from datetime import datetime
 
 
@@ -31,7 +26,7 @@ class Parser:
         """парсер і тут формуємо LessonSchedule"""
         subject = re.search(r"^.+?(?=\s*\((?:Л|Пр|Зал|Екз|Лаб)\))", row).group(0)
         subject_type = re.search(r"\((Л|Пр|Зал|Екз|Лаб)\)", row).group()
-        teacher = re.search(r"[А-ЯІЇЄҐЬ][а-яіїєґ'ь]+(?:\s+\([а-я\.]+\))?\s+[А-ЯІЇЄҐЬ]\.[А-ЯІЇЄҐЬ]\.", row)
+        teacher = re.search(r"(?<=\)\s)([А-ЩЬЮЯҐЄІЇа-щьюяґєії'].+?)(?=\sауд\.)", row)
         #якшо якийсь кончений викладач не пройде по регулярці шоб не зламалось
         if not teacher:
             logging.info(f"{row} is not a teacher")
@@ -64,7 +59,7 @@ class Parser:
 
 
 
-    async def get_lessons_data(self, update: Update,  group: str) -> WeekSchedule:
+    def get_lessons_data(self, group: str) -> WeekSchedule:
         encoded_group = quote(group, encoding='cp1251')
         data = "faculty=0&teacher=&course=0&group=" + encoded_group + "&sdate=&edate=&n=700"
         response = requests.post(ParserConstants.URL, data=data)
@@ -138,5 +133,3 @@ class Parser:
 
         return week_schema
 
-if __name__ == "__main__":
-    Parser.get_lessons_data()
