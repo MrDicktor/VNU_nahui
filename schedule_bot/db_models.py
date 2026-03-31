@@ -1,9 +1,13 @@
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Time, ForeignKey
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.dialects.postgresql import UUID
+from dotenv import load_dotenv
+import os
 import uuid
 
-engine = create_engine('postgresql+psycopg2://stas_admin:1280@localhost:5432/vnu_bot')
+load_dotenv()
+
+engine = create_engine(os.getenv("DB_URL"))
 Session = sessionmaker(bind=engine)
 session = Session()
 Base = declarative_base()
