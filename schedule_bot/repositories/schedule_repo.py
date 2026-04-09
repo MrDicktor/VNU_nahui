@@ -2,10 +2,15 @@ import datetime
 import time
 
 from schedule_bot.repositories.base_alchemy import BaseAlchemyRepo
-from schedule_bot.db_models import Room, Schedule
+from schedule_bot.db_models import  Schedule
 
 
 class ScheduleRepo(BaseAlchemyRepo):
+
+    def __init__(self, session):
+        super().__init__(session)
+        self.model = Schedule
+
     async def create_lesson(self,
                               date: datetime,
                               weekday: str,

@@ -2,6 +2,11 @@ from schedule_bot.repositories.base_alchemy import BaseAlchemyRepo
 from schedule_bot.db_models import Room
 
 class RoomRepo(BaseAlchemyRepo):
+
+    def __init__(self, session):
+        super().__init__(session)
+        self.model = Room
+
     async def create_room(self, room: str):
         new_room = Room(name=room)
         self.session.add(new_room)
