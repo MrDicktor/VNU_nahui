@@ -1,9 +1,8 @@
 import pytest
-import json
 
 from schedule_bot.exceptions import GroupNotFoundException
 from schedule_bot.parser import Parser
-from tests.fixtures import fake_html_fixture, expected_data_fixture, fake_html_error_fixture, fake_html_five_days, expected_data_five_days_fixture
+from tests.parser.fixtures import fake_html_fixture, expected_data_fixture, fake_html_error_fixture, fake_html_five_days, expected_data_five_days_fixture
 from datetime import time
 
 

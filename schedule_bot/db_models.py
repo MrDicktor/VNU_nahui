@@ -1,21 +1,22 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Time, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Time, ForeignKey, func
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.dialects.postgresql import UUID
 from dotenv import load_dotenv
 import os
 import uuid
 
+
 load_dotenv()
 
-engine = create_engine(os.getenv("DB_URL"))
-Session = sessionmaker(bind=engine)
-session = Session()
+# engine = create_engine(os.getenv("DB_URL"))
+# Session = sessionmaker(bind=engine)
+# session = Session()
 Base = declarative_base()
 
 class ScheduleConstants:
     MAX_WEEK_DAY = 10
     MAX_SUBJECT = 100
-    MAX_SUBJECT_TYPE = 5
+    MAX_SUBJECT_TYPE = 10
     MAX_SUB_GROUP = 20
     MAX_ELIMINATION = 500
     MAX_ROOM_NAME = 10
@@ -37,29 +38,29 @@ class Schedule(Base):
     room_id = Column(Integer, ForeignKey('room.id'))
     sub_group = Column(String(ScheduleConstants.MAX_SUB_GROUP), nullable=True)
     elimination = Column(String(ScheduleConstants.MAX_ELIMINATION), nullable=True)
-    creation_date = Column(DateTime)
-    actualization_date = Column(DateTime, nullable=True)
+    creation_date = Column(DateTime, server_default=func.timezone('utc', func.now()))
+    actualization_date = Column(DateTime, nullable=True, onupdate=func.timezone('utc', func.now()))
 
 class Room(Base):
     __tablename__ = 'room'
     id = Column(Integer, primary_key=True)
     uuid = Column(UUID(as_uuid=True), default=uuid.uuid4)
     name = Column(String(ScheduleConstants.MAX_ROOM_NAME))
-    creation_date = Column(DateTime)
+    creation_date = Column(DateTime, server_default=func.timezone('utc', func.now()))
 
 class Teacher(Base):
     __tablename__ = 'teacher'
     id = Column(Integer, primary_key=True)
     uuid = Column(UUID(as_uuid=True), default=uuid.uuid4)
     name = Column(String(ScheduleConstants.MAX_TEACHER_NAME))
-    creation_date = Column(DateTime)
+    creation_date = Column(DateTime, server_default=func.timezone('utc', func.now()))
 
 class Group(Base):
     __tablename__ = 'group'
     id = Column(Integer, primary_key=True)
     uuid = Column(UUID(as_uuid=True), default=uuid.uuid4)
     name = Column(String(ScheduleConstants.MAX_GROUP_NAME))
-    creation_date = Column(DateTime)
+    creation_date = Column(DateTime, server_default=func.timezone('utc', func.now()))
 
 class LessonsGroup(Base):
     __tablename__ = 'lessons_group'
@@ -67,6 +68,8 @@ class LessonsGroup(Base):
     uuid = Column(UUID(as_uuid=True), default=uuid.uuid4)
     lesson_id = Column(Integer, ForeignKey('lesson_schedule.id'))
     group_id = Column(Integer, ForeignKey('group.id'))
-    creation_date = Column(DateTime)
+    creation_date = Column(DateTime, server_default=func.timezone('utc', func.now()))
+
+
 
 
