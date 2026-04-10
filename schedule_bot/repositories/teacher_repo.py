@@ -7,8 +7,8 @@ class TeacherRepo(BaseAlchemyRepo):
         super().__init__(session)
         self.model = Teacher
 
-    async def create_teacher(self, teacher: str):
-        new_teacher = Teacher(name=teacher)
+    async def create_teacher(self, name: str):
+        new_teacher = Teacher(name=name)
         self.session.add(new_teacher)
         await self.session.commit()
         await self.session.refresh(new_teacher)

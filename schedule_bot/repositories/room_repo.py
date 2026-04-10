@@ -7,8 +7,8 @@ class RoomRepo(BaseAlchemyRepo):
         super().__init__(session)
         self.model = Room
 
-    async def create_room(self, room: str):
-        new_room = Room(name=room)
+    async def create_room(self, name: str):
+        new_room = Room(name=name)
         self.session.add(new_room)
         await self.session.commit()
         await self.session.refresh(new_room)

@@ -7,8 +7,8 @@ class GroupRepo(BaseAlchemyRepo):
         super().__init__(session)
         self.model = Group
 
-    async def create_group(self, group: str):
-        new_group = Group(name=group)
+    async def create_group(self, name: str):
+        new_group = Group(name=name)
         self.session.add(new_group)
         await self.session.commit()
         await self.session.refresh(new_group)
