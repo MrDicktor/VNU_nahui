@@ -1,5 +1,6 @@
 from schedule_bot.repositories.base_alchemy import BaseAlchemyRepo
 from schedule_bot.db_models import Room
+from sqlalchemy import select
 
 class RoomRepo(BaseAlchemyRepo):
 
@@ -8,8 +9,13 @@ class RoomRepo(BaseAlchemyRepo):
         self.model = Room
 
     async def create_room(self, name: str):
-        new_room = Room(name=name)
-        self.session.add(new_room)
-        await self.session.commit()
-        await self.session.refresh(new_room)
-        return new_room
+        query = select(Room).where(Room.name == name)
+        res = await self.session.execute(query)
+        db_room = res.scalar_one_or_none()
+        if db_room:
+            return db_room
+        else:
+            new_room = Room(name=name)
+            self.session.add(new_room)
+            await self.session.flush()
+            return new_room

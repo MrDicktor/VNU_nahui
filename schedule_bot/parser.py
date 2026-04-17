@@ -22,9 +22,9 @@ class ParserConstants:
 
 # мейн
 class Parser:
-    def parse(self, lesson_number: int, lesson_start: time, lesson_end: time, row: str) ->LessonSchedule:
+    async def parse(self,today_date: str, week_day: str, lesson_number: int, lesson_start: str, lesson_end: str, row: str) ->LessonSchedule:
         """парсер і тут формуємо LessonSchedule"""
-        subject = re.search(r"^.+?(?=\s*\((?:Л|Пр|Зал|Екз|Лаб)\))", row).group(0)
+        subject = re.search(r"^.+?(?=\s*\((?:Л|Пр|Зал|Екз|Лаб)\))", row).group(0).strip()
         subject_type = re.search(r"\((Л|Пр|Зал|Екз|Лаб)\)", row).group()
         teacher = re.search(r"(?<=\)\s)([А-ЩЬЮЯҐЄІЇа-щьюяґєії'].+?)(?=\sауд\.)", row)
         #якшо якийсь кончений викладач не пройде по регулярці шоб не зламалось
@@ -45,6 +45,8 @@ class Parser:
             elimination = elimination.group()
 
         lesson = LessonSchedule(
+            today_date=datetime.strptime(today_date, "%d.%m.%Y").date(),
+            week_day=week_day,
             lesson_number=lesson_number,
             start_time=datetime.strptime(lesson_start, "%H:%M").time(),
             end_time=datetime.strptime(lesson_end, "%H:%M").time(),
@@ -59,7 +61,7 @@ class Parser:
 
 
 
-    def get_lessons_data(self, group: str) -> WeekSchedule:
+    async def get_lessons_data(self, group: str) -> WeekSchedule:
         encoded_group = quote(group, encoding='cp1251')
         data = "faculty=0&teacher=&course=0&group=" + encoded_group + "&sdate=&edate=&n=700"
         response = requests.post(ParserConstants.URL, data=data)
@@ -70,12 +72,11 @@ class Parser:
         week_days = week_html.find_all("div", class_="col-md-6 col-sm-6 col-xs-12 col-print-6")
         if not week_days:
             raise GroupNotFoundException
-        week: list[DaySchedule] = []
+        week: list[list[LessonSchedule]] = []
 
         for weekday in week_days:
             date = weekday.find("h4").text
             today_date = date[:10]
-            today_date = datetime.strptime(today_date, "%d.%m.%Y").date()
             week_day = date[11:]
             schedule = weekday.find_all("tr")
             day: list[LessonSchedule] = []
@@ -104,17 +105,12 @@ class Parser:
                         row = row[1:]
 
                     for sub_row in row:
-                        lesson = self.parse(lesson_number, lesson_start, lesson_end, sub_row)
+                        lesson = await self.parse(today_date, week_day, lesson_number,lesson_start, lesson_end, sub_row)
                         day.append(lesson)
                 else:
-                    lesson = self.parse(lesson_number, lesson_start, lesson_end, row)
+                    lesson = await self.parse(today_date, week_day,lesson_number, lesson_start, lesson_end, row)
                     day.append(lesson)
-            day_scheme = DaySchedule(
-                today_date=today_date,
-                week_day=week_day,
-                schedule= day
-            )
-            week.append(day_scheme)
+            week.append(day)
         if len(week) <6:
             week.append(None)
 
