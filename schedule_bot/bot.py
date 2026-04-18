@@ -11,6 +11,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, Conversati
 
 from exceptions import GroupNotFoundException
 from schedule_bot.services import Services
+from schedule_bot.constants import TelegramBotConstants
 from schemas import WeekSchedule
 
 load_dotenv()
@@ -24,14 +25,6 @@ schedule_schemas: Dict[str, WeekSchedule] = {}
 
 
 
-class TelegramBotConstants:
-    TOKEN: str = os.getenv("TOKEN")
-    ENTER_GROUP_HANDLER_CODE: int = 2
-    MENU_HANDLER_CODE: int = 3
-    CANCEL_HANDLER_COMMAND: int = 4
-    START_HANDLER_COMMAND: str = 'start'
-    MAX_MESSAGE_LENGTH: int = 4000
-    DATABASE_URL = os.getenv("DB_URL")
 
 class TelegramBot:
 

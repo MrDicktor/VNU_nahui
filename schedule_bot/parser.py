@@ -6,7 +6,7 @@ import requests
 from urllib.parse import quote
 from schedule_bot.exceptions import GroupNotFoundException
 from datetime import datetime
-
+from schedule_bot.constants import ParserConstants
 
 logging.basicConfig(level=logging.INFO)
 
@@ -16,8 +16,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 # клас з константами вроді так треба
-class ParserConstants:
-    URL = "https://ps.vnu.edu.ua/cgi-bin/timetable.cgi?n=700"
+
 
 
 # мейн

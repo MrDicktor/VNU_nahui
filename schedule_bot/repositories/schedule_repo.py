@@ -2,16 +2,8 @@ from datetime import date, time, datetime, timedelta
 from sqlalchemy import select
 from schedule_bot.repositories.base_alchemy import BaseAlchemyRepo
 from schedule_bot.db_models import  Schedule, Room, Teacher, Group, LessonsGroup
+from schedule_bot.constants import ScheduleRepoConstants
 
-UKR_TO_DB = {
-    "Понеділок": "MONDAY",
-    "Вівторок": "TUESDAY",
-    "Середа": "WEDNESDAY",
-    "Четвер": "THURSDAY",
-    "П'ятниця": "FRIDAY",
-    "Субота": "SATURDAY",
-    "Неділя": "SUNDAY"
-}
 class ScheduleRepo(BaseAlchemyRepo):
 
     def __init__(self, session):
@@ -32,7 +24,7 @@ class ScheduleRepo(BaseAlchemyRepo):
                               elimination: int = None):
         new_lesson = Schedule(
             date=date,
-            week_day=UKR_TO_DB.get(weekday),
+            week_day=ScheduleRepoConstants.UKR_TO_DB.get(weekday),
             lesson_number=lesson_number,
             start_time=start_time,
             end_time=end_time,

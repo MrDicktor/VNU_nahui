@@ -9,13 +9,13 @@ class RoomRepo(BaseAlchemyRepo):
         self.model = Room
 
     async def create_room(self, name: str):
+        new_room = Room(name=name)
+        self.session.add(new_room)
+        await self.session.flush()
+        return new_room
+
+    async def check_room(self, name: str):
         query = select(Room).where(Room.name == name)
         res = await self.session.execute(query)
         db_room = res.scalar_one_or_none()
-        if db_room:
-            return db_room
-        else:
-            new_room = Room(name=name)
-            self.session.add(new_room)
-            await self.session.flush()
-            return new_room
+        return db_room

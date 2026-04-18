@@ -8,14 +8,10 @@ class GroupRepo(BaseAlchemyRepo):
         self.model = Group
 
     async def create_group(self, name: str):
-        db_group = await self.check_group(name)
-        if db_group:
-            return db_group
-        else:
-            new_group = Group(name=name)
-            self.session.add(new_group)
-            await self.session.flush()
-            return new_group
+        new_group = Group(name=name)
+        self.session.add(new_group)
+        await self.session.flush()
+        return new_group
 
     async def check_group(self, name: str):
         query = select(Group).where(Group.name == name)

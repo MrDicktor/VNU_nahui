@@ -4,7 +4,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from dotenv import load_dotenv
 import os
 import uuid
-
+from schedule_bot.constants import DataBaseConstants
 
 load_dotenv()
 
@@ -13,18 +13,7 @@ load_dotenv()
 # session = Session()
 Base = declarative_base()
 
-class DataBaseConstants:
-    MAX_WEEK_DAY = 10
-    MAX_SUBJECT = 100
-    MAX_SUBJECT_TYPE = 10
-    MAX_SUB_GROUP = 20
-    MAX_ELIMINATION = 500
-    MAX_ROOM_NAME = 10
-    MAX_TEACHER_NAME = 100
-    MAX_GROUP_NAME = 10
-    MAX_USERNAME = 33
-    MAX_FULL_NAME = 65
-    MAX_TELEGRAM_ID = 32
+
 
 
 class BaseModel(Base):
