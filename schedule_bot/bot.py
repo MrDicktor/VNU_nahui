@@ -86,7 +86,7 @@ class TelegramBot:
 
 
     #вирубає все якщо команда кенсел
-    @staticmethod
+    @staticmethod 
     async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return ConversationHandler.END
 
@@ -97,31 +97,40 @@ class TelegramBot:
         async  with session_factory() as session:
             services = Services(session)
             text: str = update.message.text
+            telegram_id = str(update.effective_user.id)
+            user = await services.user_exists(telegram_id)
+            group = user.user_group
             day_command: date = date.today()
             if text == "Завтра":
                 day_command = day_command + timedelta(days=1)
-            if day_command.weekday() in [5,6]:
+            message = await services.beautiful_message(group,day_command)
+            if not message:
                 message = "Вихідний"
-            else:
-                message = await services.get_schedule("КНІТ-24",day_command)
             await update.message.reply_text(message)
+
 
     @staticmethod
     async def show_week(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """те саме що попередня тільки для тижня"""
         session_factory = context.bot_data["db_factory"]
+
         target_date = date.today()
         sent_messages = 0
-        message_limit = 6
-        if date.today().weekday() in [5,6]:
+        message_limit = 7
+        if date.today().weekday() == 6:
             message_limit = 5
         async  with session_factory() as session:
             services = Services(session)
+            telegram_id = str(update.effective_user.id)
+            user = await services.user_exists(telegram_id)
+            group = user.user_group
             while sent_messages < message_limit:
-                if target_date.weekday() in [5,6]:
+                if target_date.weekday() == 6:
                     target_date = target_date + timedelta(days=1)
                     continue
-                message = await services.get_schedule("КНІТ-24",target_date)
+                message = await services.beautiful_message(group,target_date)
+                if not message:
+                    message = "Вихідний"
                 await update.message.reply_text(message)
                 sent_messages += 1
                 target_date = target_date + timedelta(days=1)

@@ -1,9 +1,9 @@
 from datetime import date, time, datetime, timedelta
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from schedule_bot.repositories.base_alchemy import BaseAlchemyRepo
 from schedule_bot.db_models import  Schedule, Room, Teacher, Group, LessonsGroup
 from schedule_bot.constants import ScheduleRepoConstants
-
+from schedule_bot.schemas import DBSchedule
 class ScheduleRepo(BaseAlchemyRepo):
 
     def __init__(self, session):
@@ -68,4 +68,19 @@ class ScheduleRepo(BaseAlchemyRepo):
         )
 
         result = await self.session.execute(query)
-        return result.all()
+        return [DBSchedule.model_validate(row) for row in result]
+
+
+    async def delete_schedule_by_group(self, group_id):
+        deleted_links_cte = (
+            delete(LessonsGroup)
+            .where(LessonsGroup.group_id == group_id)
+            .returning(LessonsGroup.lesson_id)
+            .cte("deleted_links")
+        )
+        stmt = (
+            delete(Schedule)
+            .where(Schedule.id.in_(select(deleted_links_cte.c.lesson_id)))
+        )
+        await self.session.execute(stmt)
+        await self.session.flush()

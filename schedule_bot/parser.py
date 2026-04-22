@@ -32,7 +32,7 @@ class Parser:
             teacher = "Не вказано"
         else:
             teacher = teacher.group()
-        room = re.search(r"ауд\.\s*[А-ЯA-Z]-\d+", row).group()
+        room = re.search(r"ауд\.\s*[А-ЯA-Z]-[А-Яа-я0-9]+", row).group()
         sub_group = re.search(r"\(підгр\.\s?(\d+)\)", row)
         if sub_group:
             sub_group = sub_group.group()
@@ -110,8 +110,16 @@ class Parser:
                     lesson = await self.parse(today_date, week_day,lesson_number, lesson_start, lesson_end, row)
                     day.append(lesson)
             week.append(day)
+
         if len(week) <6:
             week.append(None)
+
+        if len(week) <7:
+            week.append(None)
+
+
+
+
 
 #отут ти мабуть доїбешся але я не придумав як тут краще зробити
         week_schema = WeekSchedule(
@@ -121,10 +129,12 @@ class Parser:
             day_4=week[3],
             day_5=week[4],
             day_6=week[5],
+            day_7=week[6],
         )
 
         for i in week_schema:
             logging.debug(i)
+
 
         return week_schema
 
