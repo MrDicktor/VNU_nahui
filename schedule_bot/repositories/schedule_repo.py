@@ -1,10 +1,9 @@
-import datetime
-import time
-
+from datetime import date, time, datetime, timedelta
+from sqlalchemy import select, delete
 from schedule_bot.repositories.base_alchemy import BaseAlchemyRepo
-from schedule_bot.db_models import  Schedule
-
-
+from schedule_bot.db_models import  Schedule, Room, Teacher, Group, LessonsGroup
+from schedule_bot.constants import ScheduleRepoConstants
+from schedule_bot.schemas import DBSchedule
 class ScheduleRepo(BaseAlchemyRepo):
 
     def __init__(self, session):
@@ -25,7 +24,7 @@ class ScheduleRepo(BaseAlchemyRepo):
                               elimination: int = None):
         new_lesson = Schedule(
             date=date,
-            week_day=weekday,
+            week_day=ScheduleRepoConstants.UKR_TO_DB.get(weekday),
             lesson_number=lesson_number,
             start_time=start_time,
             end_time=end_time,
@@ -37,7 +36,51 @@ class ScheduleRepo(BaseAlchemyRepo):
             elimination=elimination
         )
         self.session.add(new_lesson)
-        await self.session.commit()
-        await self.session.refresh(new_lesson)
+        await self.session.flush()
         return new_lesson
 
+
+    async def get_schedule_by_params(self, group_name: str, day_command: date):
+
+        query = (
+            select(
+                Schedule.date,
+                Schedule.week_day,
+                Schedule.lesson_number,
+                Schedule.start_time,
+                Schedule.end_time,
+                Schedule.subject,
+                Schedule.subject_type,
+                Schedule.sub_group,
+                Teacher.name.label("teacher_name"),
+                Room.name.label("room_name"),
+                Group.name.label("group_name"),
+                Schedule.creation_date
+            )
+            .join(LessonsGroup, Schedule.id == LessonsGroup.lesson_id)
+            .join(Group, LessonsGroup.group_id == Group.id)
+            .join(Teacher, Schedule.teacher_id == Teacher.id)
+            .join(Room, Schedule.room_id == Room.id)
+            .where(
+                Group.name == group_name,
+                Schedule.date == day_command,
+            ).order_by(Schedule.lesson_number)
+        )
+
+        result = await self.session.execute(query)
+        return [DBSchedule.model_validate(row) for row in result]
+
+
+    async def delete_schedule_by_group(self, group_id):
+        deleted_links_cte = (
+            delete(LessonsGroup)
+            .where(LessonsGroup.group_id == group_id)
+            .returning(LessonsGroup.lesson_id)
+            .cte("deleted_links")
+        )
+        stmt = (
+            delete(Schedule)
+            .where(Schedule.id.in_(select(deleted_links_cte.c.lesson_id)))
+        )
+        await self.session.execute(stmt)
+        await self.session.flush()

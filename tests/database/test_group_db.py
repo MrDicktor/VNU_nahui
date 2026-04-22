@@ -6,7 +6,7 @@ async def test_create_group(db_session):
     repo = GroupRepo(db_session)
     test_name = "КНІТ-24"
 
-    new_group = await repo.create_group(group=test_name)
+    new_group = await repo.create_group(name=test_name)
 
     assert new_group.id is not None
     assert new_group.name == test_name

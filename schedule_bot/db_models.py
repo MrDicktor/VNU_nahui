@@ -1,10 +1,10 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Time, ForeignKey, func
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Time, ForeignKey, func, Date, BigInteger
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.dialects.postgresql import UUID
 from dotenv import load_dotenv
 import os
 import uuid
-
+from schedule_bot.constants import DataBaseConstants
 
 load_dotenv()
 
@@ -13,62 +13,58 @@ load_dotenv()
 # session = Session()
 Base = declarative_base()
 
-class ScheduleConstants:
-    MAX_WEEK_DAY = 10
-    MAX_SUBJECT = 100
-    MAX_SUBJECT_TYPE = 10
-    MAX_SUB_GROUP = 20
-    MAX_ELIMINATION = 500
-    MAX_ROOM_NAME = 10
-    MAX_TEACHER_NAME = 100
-    MAX_GROUP_NAME = 10
 
-class Schedule(Base):
-    __tablename__ = 'lesson_schedule'
+
+
+class BaseModel(Base):
+    __abstract__ = True
     id = Column(Integer, primary_key=True)
-    uuid = Column(UUID(as_uuid=True), default=uuid.uuid4)
-    date = Column(DateTime)
-    week_day = Column(String(ScheduleConstants.MAX_WEEK_DAY))
+    uuid = Column(UUID(as_uuid=True), default=uuid.uuid4, unique=True, nullable=False)
+    creation_date = Column(DateTime, server_default=func.timezone('utc', func.now()))
+
+
+class Schedule(BaseModel):
+    __tablename__ = 'lesson_schedule'
+    date = Column(Date)
+    week_day = Column(String(DataBaseConstants.MAX_WEEK_DAY))
     lesson_number = Column(Integer)
     start_time = Column(Time)
     end_time = Column(Time)
-    subject = Column(String(ScheduleConstants.MAX_SUBJECT))
-    subject_type = Column(String(ScheduleConstants.MAX_SUBJECT_TYPE))
+    subject = Column(String(DataBaseConstants.MAX_SUBJECT))
+    subject_type = Column(String(DataBaseConstants.MAX_SUBJECT_TYPE))
     teacher_id = Column(Integer, ForeignKey('teacher.id'))
     room_id = Column(Integer, ForeignKey('room.id'))
-    sub_group = Column(String(ScheduleConstants.MAX_SUB_GROUP), nullable=True)
-    elimination = Column(String(ScheduleConstants.MAX_ELIMINATION), nullable=True)
-    creation_date = Column(DateTime, server_default=func.timezone('utc', func.now()))
+    sub_group = Column(String(DataBaseConstants.MAX_SUB_GROUP), nullable=True)
+    elimination = Column(String(DataBaseConstants.MAX_ELIMINATION), nullable=True)
     actualization_date = Column(DateTime, nullable=True, onupdate=func.timezone('utc', func.now()))
 
-class Room(Base):
+class Room(BaseModel):
     __tablename__ = 'room'
-    id = Column(Integer, primary_key=True)
-    uuid = Column(UUID(as_uuid=True), default=uuid.uuid4)
-    name = Column(String(ScheduleConstants.MAX_ROOM_NAME))
-    creation_date = Column(DateTime, server_default=func.timezone('utc', func.now()))
+    name = Column(String(DataBaseConstants.MAX_ROOM_NAME), unique=True)
 
-class Teacher(Base):
+
+class Teacher(BaseModel):
     __tablename__ = 'teacher'
-    id = Column(Integer, primary_key=True)
-    uuid = Column(UUID(as_uuid=True), default=uuid.uuid4)
-    name = Column(String(ScheduleConstants.MAX_TEACHER_NAME))
-    creation_date = Column(DateTime, server_default=func.timezone('utc', func.now()))
+    name = Column(String(DataBaseConstants.MAX_TEACHER_NAME))
 
-class Group(Base):
+
+class Group(BaseModel):
     __tablename__ = 'group'
-    id = Column(Integer, primary_key=True)
-    uuid = Column(UUID(as_uuid=True), default=uuid.uuid4)
-    name = Column(String(ScheduleConstants.MAX_GROUP_NAME))
-    creation_date = Column(DateTime, server_default=func.timezone('utc', func.now()))
+    name = Column(String(DataBaseConstants.MAX_GROUP_NAME), unique=True)
 
-class LessonsGroup(Base):
+
+class LessonsGroup(BaseModel):
     __tablename__ = 'lessons_group'
-    id = Column(Integer, primary_key=True)
-    uuid = Column(UUID(as_uuid=True), default=uuid.uuid4)
     lesson_id = Column(Integer, ForeignKey('lesson_schedule.id'))
     group_id = Column(Integer, ForeignKey('group.id'))
-    creation_date = Column(DateTime, server_default=func.timezone('utc', func.now()))
+
+
+class Users(BaseModel):
+    __tablename__ = 'users'
+    telegram_id = Column(String(DataBaseConstants.MAX_TELEGRAM_ID))
+    telegram_username = Column(String(DataBaseConstants.MAX_USERNAME))
+    telegram_fullname = Column(String(DataBaseConstants.MAX_FULL_NAME))
+    user_group = Column(String, ForeignKey('group.name'))
 
 
 
