@@ -6,7 +6,7 @@ from schedule_bot.constants import ScheduleRepoConstants
 from schedule_bot.schemas import DBSchedule
 class ScheduleRepo(BaseAlchemyRepo):
 
-    def __init__(self, session):
+    def __init__(self, session)->None:
         super().__init__(session)
         self.model = Schedule
 
@@ -40,7 +40,7 @@ class ScheduleRepo(BaseAlchemyRepo):
         return new_lesson
 
 
-    async def get_schedule_by_params(self, group_name: str, day_command: date):
+    async def get_schedule_by_params(self, group_name: str, day_command: date)-> list[DBSchedule]:
 
         query = (
             select(
@@ -71,7 +71,7 @@ class ScheduleRepo(BaseAlchemyRepo):
         return [DBSchedule.model_validate(row) for row in result]
 
 
-    async def delete_schedule_by_group(self, group_id):
+    async def delete_schedule_by_group(self, group_id)-> None:
         deleted_links_cte = (
             delete(LessonsGroup)
             .where(LessonsGroup.group_id == group_id)

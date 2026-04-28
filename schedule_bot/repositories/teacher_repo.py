@@ -4,18 +4,18 @@ from sqlalchemy import select
 
 class TeacherRepo(BaseAlchemyRepo):
 
-    def __init__(self, session):
+    def __init__(self, session)->None:
         super().__init__(session)
         self.model = Teacher
 
-    async def create_teacher(self, name: str):
+    async def create_teacher(self, name: str)-> Teacher:
         new_teacher = Teacher(name=name)
         self.session.add(new_teacher)
         await self.session.flush()
 
         return new_teacher
 
-    async def check_teacher(self, name: str):
+    async def get_teacher_by_name(self, name: str)-> Teacher:
         query = select(Teacher).where(Teacher.name == name)
         res = await self.session.execute(query)
         db_group = res.scalar_one_or_none()

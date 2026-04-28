@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 
-# клас з константами вроді так треба
+
 
 
 

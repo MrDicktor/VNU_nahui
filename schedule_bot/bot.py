@@ -10,7 +10,8 @@ from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, ConversationHandler, filters, ContextTypes
 
 from exceptions import GroupNotFoundException
-from schedule_bot.services import Services
+from schedule_bot.schedule_services  import ScheduleServices
+from schedule_bot.user_service import UserService
 from schedule_bot.constants import TelegramBotConstants
 from schemas import WeekSchedule
 
@@ -28,8 +29,9 @@ schedule_schemas: Dict[str, WeekSchedule] = {}
 
 class TelegramBot:
 
-    def __init__(self, session):
-        self.services = Services(session)
+    def __init__(self, session)->None:
+        self.schedule_services = ScheduleServices(session)
+        self.user_service = UserService(session)
 
 
 
@@ -40,14 +42,15 @@ class TelegramBot:
         logging.debug(user_id)
         session_factory = context.bot_data["db_factory"]
         async  with session_factory() as session:
-            service = Services(session)
-            if not await service.user_exists(user_id):
+            user_service = UserService(session)
+            if not await user_service.user_exists(user_id):
                 await update.message.reply_text("Введіть назву групи")
                 return TelegramBotConstants.ENTER_GROUP_HANDLER_CODE
             else:
                 await update.message.reply_text("Ваша група вже збережена")
                 return ConversationHandler.END
 
+    @staticmethod
     async def special_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """тут будуть всякі додаткові кнопки, зараз не працюють """
         keyboard = ["2 тижні", "змінити групу", "знайти викладача"]
@@ -58,16 +61,16 @@ class TelegramBot:
         return TelegramBotConstants.MENU_HANDLER_CODE
 
 
-
-    async def enter_group(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    @staticmethod
+    async def enter_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """коли користувач вводить групу тут оброблюється"""
         session_factory = context.bot_data["db_factory"]
         async  with session_factory() as session:
-            services = Services(session)
+            user_services = UserService(session)
             try:
                 group = update.message.text
                 user = update.effective_user
-                await services.new_user(user, group)
+                await user_services.new_user(user, group)
             except GroupNotFoundException:
                 await update.message.reply_text("Групу не знайдено або розкладу немає 😕\n\nСпробуйте ще раз. Введіть назву групи:")
                 return TelegramBotConstants.ENTER_GROUP_HANDLER_CODE
@@ -91,19 +94,47 @@ class TelegramBot:
         return ConversationHandler.END
 
     @staticmethod
+    async def beautiful_message(group: str, day_command: date, context: ContextTypes.DEFAULT_TYPE)-> str:
+        session_factory = context.bot_data["db_factory"]
+        async  with session_factory() as session:
+            schedule_services = ScheduleServices(session)
+            day_schedule = await schedule_services.get_schedule(group, day_command)
+        if not day_schedule:
+            return "Вихідний"
+        else:
+            message: str = ""
+            message += f"{day_schedule[0].date.strftime("%d.%m.%Y")} {TelegramBotConstants.DB_TO_UKR.get(day_schedule[0].week_day)}\n\n"
+            for lesson in day_schedule:
+                message += f"{lesson.lesson_number}\ufe0f\u20e3 {lesson.start_time.strftime('%H:%M')}—{lesson.end_time.strftime('%H:%M')}\n"
+                message += f"📚{lesson.subject}{lesson.subject_type}\n"
+                message += f"👨‍🏫{lesson.teacher_name}\n"
+                message += f"🏫{lesson.room_name}\n"
+                if lesson.sub_group:
+                    message += f"{lesson.sub_group}\n"
+                if lesson.group_name:
+                    message += f"🥷{lesson.group_name}\n"
+                # if lesson.elimination:
+                #     message += f"{lesson.elimination}\n"
+                message += "\n"
+            return message
+
+    @staticmethod
     async def show_today(update: Update, context: ContextTypes.DEFAULT_TYPE) ->None:
         """тут виводим розклад на сьогодні і завтра"""
         session_factory = context.bot_data["db_factory"]
         async  with session_factory() as session:
-            services = Services(session)
+            user_services = UserService(session)
             text: str = update.message.text
             telegram_id = str(update.effective_user.id)
-            user = await services.user_exists(telegram_id)
+            user = await user_services.user_exists(telegram_id)
             group = user.user_group
             day_command: date = date.today()
             if text == "Завтра":
                 day_command = day_command + timedelta(days=1)
-            message = await services.beautiful_message(group,day_command)
+            if day_command.weekday() == 6:
+                message = "Вихідний"
+            else:
+                message = await TelegramBot.beautiful_message(group,day_command, context)
             if not message:
                 message = "Вихідний"
             await update.message.reply_text(message)
@@ -120,15 +151,15 @@ class TelegramBot:
         if date.today().weekday() == 6:
             message_limit = 5
         async  with session_factory() as session:
-            services = Services(session)
+            user_services = UserService(session)
             telegram_id = str(update.effective_user.id)
-            user = await services.user_exists(telegram_id)
+            user = await user_services.user_exists(telegram_id)
             group = user.user_group
             while sent_messages < message_limit:
                 if target_date.weekday() == 6:
                     target_date = target_date + timedelta(days=1)
                     continue
-                message = await services.beautiful_message(group,target_date)
+                message = await TelegramBot.beautiful_message(group,target_date, context)
                 if not message:
                     message = "Вихідний"
                 await update.message.reply_text(message)

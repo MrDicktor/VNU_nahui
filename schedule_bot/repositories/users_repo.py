@@ -4,11 +4,11 @@ from sqlalchemy import select
 
 class UsersRepo(BaseAlchemyRepo):
 
-    def __init__(self, session):
+    def __init__(self, session)->None:
         super().__init__(session)
         self.model = Users
 
-    async def create_user(self, telegram_username: str, telegram_id: str, telegram_fullname, user_group: str):
+    async def create_user(self, telegram_username: str, telegram_id: str, telegram_fullname, user_group: str)-> Users:
         new_user = Users(telegram_id=telegram_id,
                          telegram_username=telegram_username,
                          telegram_fullname=telegram_fullname,
@@ -24,7 +24,7 @@ class UsersRepo(BaseAlchemyRepo):
         group = group.scalar_one_or_none()
         return group.user_group
 
-    async def exist_user(self, id):
+    async def get_user_by_telegram_id(self, id: str)-> Users | None:
         query = select(Users).where(Users.telegram_id == id)
         result = await self.session.execute(query)
         result = result.scalar_one_or_none()

@@ -10,6 +10,15 @@ class TelegramBotConstants:
     START_HANDLER_COMMAND: str = 'start'
     MAX_MESSAGE_LENGTH: int = 4000
     DATABASE_URL = os.getenv("DB_URL")
+    DB_TO_UKR = {
+        "MONDAY": "Понеділок",
+        "TUESDAY": "Вівторок",
+        "WEDNESDAY": "Середа",
+        "THURSDAY": "Четвер",
+        "FRIDAY": "П'ятниця",
+        "SATURDAY": "Субота",
+        "SUNDAY": "Неділя"
+    }
 
 class DataBaseConstants:
     MAX_WEEK_DAY = 10
@@ -27,16 +36,7 @@ class DataBaseConstants:
 class ParserConstants:
     URL = "https://ps.vnu.edu.ua/cgi-bin/timetable.cgi?n=700"
 
-class ServiceConstants:
-    DB_TO_UKR = {
-        "MONDAY": "Понеділок",
-        "TUESDAY": "Вівторок",
-        "WEDNESDAY": "Середа",
-        "THURSDAY": "Четвер",
-        "FRIDAY": "П'ятниця",
-        "SATURDAY": "Субота",
-        "SUNDAY": "Неділя"
-    }
+
 
 class ScheduleRepoConstants:
     UKR_TO_DB = {
