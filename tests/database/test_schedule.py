@@ -4,6 +4,7 @@ from schedule_bot.repositories.schedule_repo import ScheduleRepo
 from schedule_bot.repositories.teacher_repo import TeacherRepo
 from schedule_bot.repositories.room_repo import RoomRepo
 
+
 @pytest.mark.asyncio
 async def test_create_lesson_full_logic(db_session):
 
@@ -11,10 +12,8 @@ async def test_create_lesson_full_logic(db_session):
     t_repo = TeacherRepo(db_session)
     r_repo = RoomRepo(db_session)
 
-
     teacher = await t_repo.create_teacher(name="Дмитро Іванович")
     room = await r_repo.create_room(name="C-505")
-
 
     new_lesson = await s_repo.create_lesson(
         date=datetime(2026, 9, 1),
@@ -27,7 +26,7 @@ async def test_create_lesson_full_logic(db_session):
         teacher_id=teacher.id,
         room_id=room.id,
         sub_group="(підгр. 1)",
-        elimination=None
+        elimination=None,
     )
 
     assert new_lesson.id is not None

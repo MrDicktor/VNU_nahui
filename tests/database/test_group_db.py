@@ -1,6 +1,7 @@
 import pytest
 from schedule_bot.repositories.group_repo import GroupRepo
 
+
 @pytest.mark.asyncio
 async def test_create_group(db_session):
     repo = GroupRepo(db_session)

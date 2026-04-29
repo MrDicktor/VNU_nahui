@@ -1,6 +1,7 @@
 import pytest
 from schedule_bot.repositories.room_repo import RoomRepo
 
+
 @pytest.mark.asyncio
 async def test_create_group(db_session):
     repo = RoomRepo(db_session)

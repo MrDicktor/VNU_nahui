@@ -11,22 +11,24 @@ from schedule_bot.constants import ParserConstants
 logging.basicConfig(level=logging.INFO)
 
 
-
-
-
-
-
-
-
-
 # мейн
 class Parser:
-    async def parse(self,today_date: str, week_day: str, lesson_number: int, lesson_start: str, lesson_end: str, row: str) ->LessonSchedule:
+    async def parse(
+        self,
+        today_date: str,
+        week_day: str,
+        lesson_number: int,
+        lesson_start: str,
+        lesson_end: str,
+        row: str,
+    ) -> LessonSchedule:
         """парсер і тут формуємо LessonSchedule"""
-        subject = re.search(r"^.+?(?=\s*\((?:Л|Пр|Зал|Екз|Лаб)\))", row).group(0).strip()
+        subject = (
+            re.search(r"^.+?(?=\s*\((?:Л|Пр|Зал|Екз|Лаб)\))", row).group(0).strip()
+        )
         subject_type = re.search(r"\((Л|Пр|Зал|Екз|Лаб)\)", row).group()
         teacher = re.search(r"(?<=\)\s)([А-ЩЬЮЯҐЄІЇа-щьюяґєії'].+?)(?=\sауд\.)", row)
-        #якшо якийсь кончений викладач не пройде по регулярці шоб не зламалось
+        # якшо якийсь кончений викладач не пройде по регулярці шоб не зламалось
         if not teacher:
             logging.info(f"{row} is not a teacher")
             teacher = "Не вказано"
@@ -54,21 +56,25 @@ class Parser:
             room=room,
             sub_group=sub_group,
             groups=groups,
-            elimination=elimination
+            elimination=elimination,
         )
         return lesson
 
-
-
     async def get_lessons_data(self, group: str) -> WeekSchedule:
-        encoded_group = quote(group, encoding='cp1251')
-        data = "faculty=0&teacher=&course=0&group=" + encoded_group + "&sdate=&edate=&n=700"
+        encoded_group = quote(group, encoding="cp1251")
+        data = (
+            "faculty=0&teacher=&course=0&group="
+            + encoded_group
+            + "&sdate=&edate=&n=700"
+        )
         response = requests.post(ParserConstants.URL, data=data)
-        response.encoding = 'cp1251'
+        response.encoding = "cp1251"
         soup = BeautifulSoup(response.text, "lxml")
         tables = soup.find_all("div", class_="container")
         week_html = tables[1]
-        week_days = week_html.find_all("div", class_="col-md-6 col-sm-6 col-xs-12 col-print-6")
+        week_days = week_html.find_all(
+            "div", class_="col-md-6 col-sm-6 col-xs-12 col-print-6"
+        )
         if not week_days:
             raise GroupNotFoundException
         week: list[list[LessonSchedule]] = []
@@ -82,8 +88,8 @@ class Parser:
 
             for tr in schedule:
                 row = tr.text
-                row = row.replace('\xa0', ' ')
-                #щоб скіпнути рядок в якому немає пари або практика
+                row = row.replace("\xa0", " ")
+                # щоб скіпнути рядок в якому немає пари або практика
                 if len(row) < 25:
                     continue
                 lesson_number = int(row[0])
@@ -91,37 +97,47 @@ class Parser:
                 lesson_end = row[6:11]
                 row = row[11:]
                 lessons_at_one_time = len(re.findall(r"ауд\.\s*[А-ЯA-Z]-\d+", row))
-                #якщо дві пари в один час то це 100% або 2 підгрупи або вибіркові тому розділяємо ці пари і окремо розпрашую
+                # якщо дві пари в один час то це 100% або 2 підгрупи або вибіркові тому розділяємо ці пари і окремо розпрашую
                 if lessons_at_one_time > 1:
                     logging.info("далбайоб")
                     if "(підгр. 1)" in row:
                         row = row.replace("(підгр. 1)", "(підгр. 1)\n", 1)
                         row = row.split("\n")
-                    #ВОК абревіатура вибіркової дисципліни і її я використовуюю як маркер щоб розділити 2 пари
+                    # ВОК абревіатура вибіркової дисципліни і її я використовуюю як маркер щоб розділити 2 пари
                     if row.count("ВОК") > 1:
                         row = row.replace("ВОК", "\nВОК")
                         row = row.split("\n")
                         row = row[1:]
 
                     for sub_row in row:
-                        lesson = await self.parse(today_date, week_day, lesson_number,lesson_start, lesson_end, sub_row)
+                        lesson = await self.parse(
+                            today_date,
+                            week_day,
+                            lesson_number,
+                            lesson_start,
+                            lesson_end,
+                            sub_row,
+                        )
                         day.append(lesson)
                 else:
-                    lesson = await self.parse(today_date, week_day,lesson_number, lesson_start, lesson_end, row)
+                    lesson = await self.parse(
+                        today_date,
+                        week_day,
+                        lesson_number,
+                        lesson_start,
+                        lesson_end,
+                        row,
+                    )
                     day.append(lesson)
             week.append(day)
 
-        if len(week) <6:
+        if len(week) < 6:
             week.append(None)
 
-        if len(week) <7:
+        if len(week) < 7:
             week.append(None)
 
-
-
-
-
-#отут ти мабуть доїбешся але я не придумав як тут краще зробити
+        # отут ти мабуть доїбешся але я не придумав як тут краще зробити
         week_schema = WeekSchedule(
             day_1=week[0],
             day_2=week[1],
@@ -135,6 +151,4 @@ class Parser:
         for i in week_schema:
             logging.debug(i)
 
-
         return week_schema
-

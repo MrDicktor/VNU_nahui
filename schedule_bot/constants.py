@@ -1,13 +1,15 @@
 import os
 from dotenv import load_dotenv
+
 load_dotenv()
+
 
 class TelegramBotConstants:
     TOKEN: str = os.getenv("TOKEN")
     ENTER_GROUP_HANDLER_CODE: int = 2
     MENU_HANDLER_CODE: int = 3
     CANCEL_HANDLER_COMMAND: int = 4
-    START_HANDLER_COMMAND: str = 'start'
+    START_HANDLER_COMMAND: str = "start"
     MAX_MESSAGE_LENGTH: int = 4000
     DATABASE_URL = os.getenv("DB_URL")
     DB_TO_UKR = {
@@ -17,8 +19,9 @@ class TelegramBotConstants:
         "THURSDAY": "Четвер",
         "FRIDAY": "П'ятниця",
         "SATURDAY": "Субота",
-        "SUNDAY": "Неділя"
+        "SUNDAY": "Неділя",
     }
+
 
 class DataBaseConstants:
     MAX_WEEK_DAY = 10
@@ -33,9 +36,9 @@ class DataBaseConstants:
     MAX_FULL_NAME = 65
     MAX_TELEGRAM_ID = 32
 
+
 class ParserConstants:
     URL = "https://ps.vnu.edu.ua/cgi-bin/timetable.cgi?n=700"
-
 
 
 class ScheduleRepoConstants:
@@ -46,5 +49,5 @@ class ScheduleRepoConstants:
         "Четвер": "THURSDAY",
         "П'ятниця": "FRIDAY",
         "Субота": "SATURDAY",
-        "Неділя": "SUNDAY"
+        "Неділя": "SUNDAY",
     }

@@ -7,33 +7,33 @@ from typing import Dict
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, ConversationHandler, filters, ContextTypes
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    ConversationHandler,
+    filters,
+    ContextTypes,
+)
 
 from exceptions import GroupNotFoundException
-from schedule_bot.schedule_services  import ScheduleServices
+from schedule_bot.schedule_services import ScheduleService
 from schedule_bot.user_service import UserService
 from schedule_bot.constants import TelegramBotConstants
 from schemas import WeekSchedule
 
 load_dotenv()
 
-"""схема така якшо новий юзер його просить ввести групу зберігає її і зразу парсить для цієї групи, 
-зберігається в дікті schedule schemas[group: WeekSchedule] і потім вже з цього дікта берем схему для вивода. Якщо користувач збередений але в дікті нема знов парсим(наприклпд  бот перезапущено то з дікта все пропадає) 
-але проблема того шо зараз його треба кожен день перезапускати шоб оновленні данні отримувати, потім вже як json буде як ти казав то наперед напарсити можна буде"""
 
 user_ids: Dict[str, str] = {}
 schedule_schemas: Dict[str, WeekSchedule] = {}
 
 
-
-
 class TelegramBot:
 
-    def __init__(self, session)->None:
-        self.schedule_services = ScheduleServices(session)
+    def __init__(self, session) -> None:
+        self.schedule_services = ScheduleService(session)
         self.user_service = UserService(session)
-
-
 
     @staticmethod
     async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -41,9 +41,9 @@ class TelegramBot:
         user_id: str = str(update.effective_user.id)
         logging.debug(user_id)
         session_factory = context.bot_data["db_factory"]
-        async  with session_factory() as session:
+        async with session_factory() as session:
             user_service = UserService(session)
-            if not await user_service.user_exists(user_id):
+            if not await user_service.get_user(user_id):
                 await update.message.reply_text("Введіть назву групи")
                 return TelegramBotConstants.ENTER_GROUP_HANDLER_CODE
             else:
@@ -52,52 +52,64 @@ class TelegramBot:
 
     @staticmethod
     async def special_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        """тут будуть всякі додаткові кнопки, зараз не працюють """
+        """тут будуть всякі додаткові кнопки, зараз не працюють"""
         keyboard = ["2 тижні", "змінити групу", "знайти викладача"]
-        reply_markup = ReplyKeyboardMarkup(keyboard,
-                                           resize_keyboard=True,
-                                           one_time_keyboard=True,)
+        reply_markup = ReplyKeyboardMarkup(
+            keyboard,
+            resize_keyboard=True,
+            one_time_keyboard=True,
+        )
         await update.message.reply_text(text="Оберіть опцію", reply_markup=reply_markup)
         return TelegramBotConstants.MENU_HANDLER_CODE
-
 
     @staticmethod
     async def enter_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """коли користувач вводить групу тут оброблюється"""
         session_factory = context.bot_data["db_factory"]
-        async  with session_factory() as session:
+        async with session_factory() as session:
             user_services = UserService(session)
             try:
                 group = update.message.text
                 user = update.effective_user
-                await user_services.new_user(user, group)
+                telegram_id = str(update.effective_user.id)
+                user_fullname = (
+                    update.effective_user.first_name + update.effective_user.last_name
+                )
+                username = update.effective_user.username
+                await user_services.create_user(
+                    telegram_id, user_fullname, username, group
+                )
             except GroupNotFoundException:
-                await update.message.reply_text("Групу не знайдено або розкладу немає 😕\n\nСпробуйте ще раз. Введіть назву групи:")
+                await update.message.reply_text(
+                    "Групу не знайдено або розкладу немає 😕\n\nСпробуйте ще раз. Введіть назву групи:"
+                )
                 return TelegramBotConstants.ENTER_GROUP_HANDLER_CODE
 
             await update.message.reply_text("Групу збережено")
-            keyboard = [["Сьогодні", "Завтра", "Тиждень"],
-                        ["Меню"]]
-            reply_markup = ReplyKeyboardMarkup(keyboard,
-                                               resize_keyboard=True,
-                                               is_persistent=True,
-                                               one_time_keyboard=False
-                                               )
-            await update.message.reply_text(text="Оберіть опцію", reply_markup=reply_markup)
+            keyboard = [["Сьогодні", "Завтра", "Тиждень"], ["Меню"]]
+            reply_markup = ReplyKeyboardMarkup(
+                keyboard,
+                resize_keyboard=True,
+                is_persistent=True,
+                one_time_keyboard=False,
+            )
+            await update.message.reply_text(
+                text="Оберіть опцію", reply_markup=reply_markup
+            )
             return ConversationHandler.END
 
-
-
-    #вирубає все якщо команда кенсел
-    @staticmethod 
+    # вирубає все якщо команда кенсел
+    @staticmethod
     async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return ConversationHandler.END
 
     @staticmethod
-    async def beautiful_message(group: str, day_command: date, context: ContextTypes.DEFAULT_TYPE)-> str:
+    async def beautiful_message(
+        group: str, day_command: date, context: ContextTypes.DEFAULT_TYPE
+    ) -> str:
         session_factory = context.bot_data["db_factory"]
-        async  with session_factory() as session:
-            schedule_services = ScheduleServices(session)
+        async with session_factory() as session:
+            schedule_services = ScheduleService(session)
             day_schedule = await schedule_services.get_schedule(group, day_command)
         if not day_schedule:
             return "Вихідний"
@@ -119,14 +131,14 @@ class TelegramBot:
             return message
 
     @staticmethod
-    async def show_today(update: Update, context: ContextTypes.DEFAULT_TYPE) ->None:
+    async def show_today(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """тут виводим розклад на сьогодні і завтра"""
         session_factory = context.bot_data["db_factory"]
-        async  with session_factory() as session:
+        async with session_factory() as session:
             user_services = UserService(session)
             text: str = update.message.text
             telegram_id = str(update.effective_user.id)
-            user = await user_services.user_exists(telegram_id)
+            user = await user_services.get_user(telegram_id)
             group = user.user_group
             day_command: date = date.today()
             if text == "Завтра":
@@ -134,11 +146,12 @@ class TelegramBot:
             if day_command.weekday() == 6:
                 message = "Вихідний"
             else:
-                message = await TelegramBot.beautiful_message(group,day_command, context)
+                message = await TelegramBot.beautiful_message(
+                    group, day_command, context
+                )
             if not message:
                 message = "Вихідний"
             await update.message.reply_text(message)
-
 
     @staticmethod
     async def show_week(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -150,16 +163,18 @@ class TelegramBot:
         message_limit = 7
         if date.today().weekday() == 6:
             message_limit = 5
-        async  with session_factory() as session:
+        async with session_factory() as session:
             user_services = UserService(session)
             telegram_id = str(update.effective_user.id)
-            user = await user_services.user_exists(telegram_id)
+            user = await user_services.get_user(telegram_id)
             group = user.user_group
             while sent_messages < message_limit:
                 if target_date.weekday() == 6:
                     target_date = target_date + timedelta(days=1)
                     continue
-                message = await TelegramBot.beautiful_message(group,target_date, context)
+                message = await TelegramBot.beautiful_message(
+                    group, target_date, context
+                )
                 if not message:
                     message = "Вихідний"
                 await update.message.reply_text(message)
@@ -167,25 +182,34 @@ class TelegramBot:
                 target_date = target_date + timedelta(days=1)
                 await asyncio.sleep(0.3)
 
-
     @staticmethod
     def main() -> None:
         engine = create_async_engine(TelegramBotConstants.DATABASE_URL, echo=True)
         async_session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
-        application: Application = Application.builder().token(TelegramBotConstants.TOKEN).build()
+        application: Application = (
+            Application.builder().token(TelegramBotConstants.TOKEN).build()
+        )
 
         application.bot_data["db_factory"] = async_session_factory
-        #конв хандлер тут обробляється діалог
+        # конв хандлер тут обробляється діалог
         # в майбутньому в конв хендлері будуть ше стейтс
 
         bot_instance = TelegramBot(async_session_factory)
         conversation: ConversationHandler = ConversationHandler(
             # на команду старт він запускається і викликає старт
-            entry_points=[CommandHandler(TelegramBotConstants.START_HANDLER_COMMAND, TelegramBot.start)],
+            entry_points=[
+                CommandHandler(
+                    TelegramBotConstants.START_HANDLER_COMMAND, TelegramBot.start
+                )
+            ],
             states={
                 # старт вертає ентер груп, ентер груп оброблює повідомлення користувача фільтрує шоб це був текст і не команда і визиває шоу дата
-                TelegramBotConstants.ENTER_GROUP_HANDLER_CODE: [MessageHandler(filters.TEXT & ~filters.COMMAND, bot_instance.enter_group)],
+                TelegramBotConstants.ENTER_GROUP_HANDLER_CODE: [
+                    MessageHandler(
+                        filters.TEXT & ~filters.COMMAND, bot_instance.enter_group
+                    )
+                ],
             },
             # фолбек  це причини чо конв хедлер зупиняєтсья, і фунція туд просто якісь текст пихнути
             fallbacks=[CommandHandler("cancel", TelegramBot.cancel)],
@@ -194,9 +218,13 @@ class TelegramBot:
         )
 
         application.add_handler(conversation)
-        #обробники для кнопок
-        application.add_handler(MessageHandler(filters.Text(["Сьогодні", "Завтра"]), TelegramBot.show_today))
-        application.add_handler(MessageHandler(filters.Text(["Тиждень"]), TelegramBot.show_week))
+        # обробники для кнопок
+        application.add_handler(
+            MessageHandler(filters.Text(["Сьогодні", "Завтра"]), TelegramBot.show_today)
+        )
+        application.add_handler(
+            MessageHandler(filters.Text(["Тиждень"]), TelegramBot.show_week)
+        )
 
         application.run_polling(allowed_updates=Update.ALL_TYPES)
 

@@ -2,13 +2,13 @@ from pydantic import BaseModel, ConfigDict
 from typing import Literal, Optional, List
 from datetime import time, datetime, date
 
-
 subject_type = Literal["(Л)", "(Пр)", "(Зал)", "(Екз)", "(Лаб)"]
 
 
 class Subject(BaseModel):
     subject: str
     subject_type: subject_type
+
 
 class LessonSchedule(BaseModel):
     today_date: date
@@ -30,8 +30,11 @@ class WeekSchedule(BaseModel):
     day_3: list[LessonSchedule]
     day_4: list[LessonSchedule]
     day_5: list[LessonSchedule]
-    day_6: Optional[list[LessonSchedule]] #якщо сьогодні вихідний то парсяться 5 днів, якщо будній то 6
-    day_7: Optional[list[LessonSchedule]] #уроди пари в суботу добавили
+    day_6: Optional[
+        list[LessonSchedule]
+    ]  # якщо сьогодні вихідний то парсяться 5 днів, якщо будній то 6
+    day_7: Optional[list[LessonSchedule]]  # уроди пари в суботу добавили
+
 
 class DBSchedule(BaseModel):
     model_config = ConfigDict(from_attributes=True)

@@ -1,27 +1,31 @@
 from datetime import date, time, datetime, timedelta
 from sqlalchemy import select, delete
 from schedule_bot.repositories.base_alchemy import BaseAlchemyRepo
-from schedule_bot.db_models import  Schedule, Room, Teacher, Group, LessonsGroup
+from schedule_bot.db_models import Schedule, Room, Teacher, Group, LessonsGroup
 from schedule_bot.constants import ScheduleRepoConstants
 from schedule_bot.schemas import DBSchedule
+
+
 class ScheduleRepo(BaseAlchemyRepo):
 
-    def __init__(self, session)->None:
+    def __init__(self, session) -> None:
         super().__init__(session)
         self.model = Schedule
 
-    async def create_lesson(self,
-                              date: datetime,
-                              weekday: str,
-                              lesson_number: int,
-                              start_time: time,
-                              end_time: time,
-                              subject: str,
-                              subject_type: str,
-                              teacher_id: int,
-                              room_id: int,
-                              sub_group: str = None,
-                              elimination: int = None):
+    async def create_lesson(
+        self,
+        date: datetime,
+        weekday: str,
+        lesson_number: int,
+        start_time: time,
+        end_time: time,
+        subject: str,
+        subject_type: str,
+        teacher_id: int,
+        room_id: int,
+        sub_group: str = None,
+        elimination: int = None,
+    ):
         new_lesson = Schedule(
             date=date,
             week_day=ScheduleRepoConstants.UKR_TO_DB.get(weekday),
@@ -33,14 +37,15 @@ class ScheduleRepo(BaseAlchemyRepo):
             teacher_id=teacher_id,
             room_id=room_id,
             sub_group=sub_group,
-            elimination=elimination
+            elimination=elimination,
         )
         self.session.add(new_lesson)
         await self.session.flush()
         return new_lesson
 
-
-    async def get_schedule_by_params(self, group_name: str, day_command: date)-> list[DBSchedule]:
+    async def get_schedule_by_params(
+        self, group_name: str, day_command: date
+    ) -> list[DBSchedule]:
 
         query = (
             select(
@@ -55,7 +60,7 @@ class ScheduleRepo(BaseAlchemyRepo):
                 Teacher.name.label("teacher_name"),
                 Room.name.label("room_name"),
                 Group.name.label("group_name"),
-                Schedule.creation_date
+                Schedule.creation_date,
             )
             .join(LessonsGroup, Schedule.id == LessonsGroup.lesson_id)
             .join(Group, LessonsGroup.group_id == Group.id)
@@ -64,23 +69,22 @@ class ScheduleRepo(BaseAlchemyRepo):
             .where(
                 Group.name == group_name,
                 Schedule.date == day_command,
-            ).order_by(Schedule.lesson_number)
+            )
+            .order_by(Schedule.lesson_number)
         )
 
         result = await self.session.execute(query)
         return [DBSchedule.model_validate(row) for row in result]
 
-
-    async def delete_schedule_by_group(self, group_id)-> None:
+    async def delete_schedule_by_group(self, group_id) -> None:
         deleted_links_cte = (
             delete(LessonsGroup)
             .where(LessonsGroup.group_id == group_id)
             .returning(LessonsGroup.lesson_id)
             .cte("deleted_links")
         )
-        stmt = (
-            delete(Schedule)
-            .where(Schedule.id.in_(select(deleted_links_cte.c.lesson_id)))
+        stmt = delete(Schedule).where(
+            Schedule.id.in_(select(deleted_links_cte.c.lesson_id))
         )
         await self.session.execute(stmt)
         await self.session.flush()
