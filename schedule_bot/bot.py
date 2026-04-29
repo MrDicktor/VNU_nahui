@@ -72,9 +72,7 @@ class TelegramBot:
                 group = update.message.text
                 user = update.effective_user
                 telegram_id = str(update.effective_user.id)
-                user_fullname = (
-                    update.effective_user.first_name + update.effective_user.last_name
-                )
+                user_fullname = update.effective_user.full_name
                 username = update.effective_user.username
                 await user_services.create_user(
                     telegram_id, user_fullname, username, group
