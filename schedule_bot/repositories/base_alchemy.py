@@ -1,5 +1,6 @@
 from sqlalchemy import select
 
+
 class BaseAlchemyRepo:
     def __init__(self, session):
         self.session = session
@@ -17,7 +18,7 @@ class BaseAlchemyRepo:
         return False
 
     async def get(self, obj_id: int):
-        query = select(self.model).where(self.model.id == obj_id) #noqa
+        query = select(self.model).where(self.model.id == obj_id)  # noqa
         result = await self.session.execute(query)
         db_obj = result.scalar_one_or_none()
 

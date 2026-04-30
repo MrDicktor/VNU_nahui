@@ -31,7 +31,7 @@ async def test_create_full_lesson(db_session):
         teacher_id=teacher.id,
         room_id=room.id,
         sub_group="(підгр. 1)",
-        elimination=None
+        elimination=None,
     )
 
     lesson_group = await lesson_group_repo.create_lesson_group(
