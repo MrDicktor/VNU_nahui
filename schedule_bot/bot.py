@@ -47,7 +47,7 @@ class TelegramBot:
         redis: Redis = context.bot_data["redis"]
         async with session_factory() as session:
             user_service = UserService(session, redis)
-            if not await user_service.get_user(user_id):
+            if not await user_service.get_user_group(user_id):
                 await update.message.reply_text("Введіть назву групи")
                 return TelegramBotConstants.ENTER_GROUP_HANDLER_CODE
             else:
@@ -144,8 +144,7 @@ class TelegramBot:
             user_services = UserService(session, redis)
             text: str = update.message.text
             telegram_id = str(update.effective_user.id)
-            user = await user_services.get_user(telegram_id)
-            group = user.user_group
+            group = await user_services.get_user_group(telegram_id)
             day_command: date = date.today()
             if text == "Завтра":
                 day_command = day_command + timedelta(days=1)
@@ -172,8 +171,8 @@ class TelegramBot:
         async with session_factory() as session:
             user_services = UserService(session, redis)
             telegram_id = str(update.effective_user.id)
-            user = await user_services.get_user(telegram_id)
-            group = user.user_group
+            group = await user_services.get_user_group(telegram_id)
+
             while sent_messages < message_limit:
                 if target_date.weekday() == 6:
                     target_date = target_date + timedelta(days=1)
