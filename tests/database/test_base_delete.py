@@ -23,12 +23,11 @@ async def test_delete(db_session):
     result = (await db_session.execute(query)).scalar_one_or_none()
     assert result is None
 
+
 @pytest.mark.asyncio
 async def test_delete_fail(db_session):
     repo = TeacherRepo(db_session)
 
-    result = await repo.delete(obj_id = 9999999)
+    result = await repo.delete(obj_id=9999999)
 
     assert result is False
-
-
